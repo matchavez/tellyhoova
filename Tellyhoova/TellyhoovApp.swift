@@ -1,10 +1,12 @@
 import SwiftUI
 import AppKit
+import UserNotifications
 
 @main
 struct TellyhoovApp: App {
     init() {
         NSApplication.shared.applicationIconImage = NSImage(named: "AppIcon")
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
     }
 
     var body: some Scene {
@@ -26,5 +28,17 @@ struct TellyhoovApp: App {
         Settings {
             SettingsView()
         }
+    }
+}
+
+private final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+    static let shared = NotificationDelegate()
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
     }
 }
