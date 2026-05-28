@@ -6,7 +6,14 @@ import UserNotifications
 struct TellyhoovApp: App {
     init() {
         NSApplication.shared.applicationIconImage = NSImage(named: "AppIcon")
-        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        let center = UNUserNotificationCenter.current()
+        center.delegate = NotificationDelegate.shared
+        Task {
+            let settings = await center.notificationSettings()
+            if settings.authorizationStatus == .notDetermined {
+                try? await center.requestAuthorization(options: [.alert, .sound, .provisional])
+            }
+        }
     }
 
     var body: some Scene {
