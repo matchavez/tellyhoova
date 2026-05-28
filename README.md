@@ -73,16 +73,21 @@ brew install --cask tellyhoova
 
 ### Gatekeeper warning
 
-Tellyhoova is not signed with an Apple Developer certificate, so macOS Gatekeeper will block it on the first launch with a message that the app "cannot be opened because the developer cannot be verified."
+Tellyhoova is not signed with an Apple Developer certificate. macOS may block it with one of two messages:
 
-To open it anyway, choose one of:
+**"Cannot be opened because the developer cannot be verified"** — right-click `Tellyhoova.app` and choose **Open**, then click **Open** in the dialog.
 
-- **Right-click → Open** on `Tellyhoova.app` and click **Open** in the dialog that appears.
-- Or run this once in Terminal after installing:
+**"Tellyhoova is damaged and can't be opened"** — this is the quarantine flag set by Homebrew on downloaded files. Run this once in Terminal:
 
-  ```bash
-  xattr -d com.apple.quarantine /Applications/Tellyhoova.app
-  ```
+```bash
+xattr -dr com.apple.quarantine /Applications/Tellyhoova.app
+```
+
+To avoid the prompt entirely, install with quarantine disabled from the start:
+
+```bash
+brew install --cask --no-quarantine matchavez/tellyhoova/tellyhoova
+```
 
 ---
 
