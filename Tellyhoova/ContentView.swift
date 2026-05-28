@@ -209,6 +209,10 @@ struct ContentView: View {
 
     private func requestNotificationPermission() async {
         guard AppSettings.shared.notificationsEnabled else { return }
-        _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        if settings.authorizationStatus == .notDetermined {
+            _ = try? await center.requestAuthorization(options: [.alert, .sound])
+        }
     }
 }
