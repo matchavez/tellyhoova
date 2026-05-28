@@ -253,7 +253,7 @@ final class DownloadManager {
         NSSound(named: "Glass")?.play()
 
         UNUserNotificationCenter.current().getNotificationSettings { settings in
-            guard settings.authorizationStatus == .authorized else { return }
+            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
             let content = UNMutableNotificationContent()
             content.title = title
             content.body = body
