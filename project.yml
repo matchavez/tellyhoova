@@ -1,0 +1,43 @@
+name: Tellyhoova
+options:
+  bundleIdPrefix: com.matchavez
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+
+targets:
+  Tellyhoova:
+    type: application
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Tellyhoova
+        excludes:
+          - "Info.plist"
+    resources:
+      - path: Tellyhoova/Assets.xcassets
+    info:
+      path: Tellyhoova/Info.plist
+      properties:
+        CFBundleName: Tellyhoova
+        CFBundleDisplayName: Tellyhoova
+        LSMinimumSystemVersion: "15.0"
+        NSHighResolutionCapable: true
+        NSUserNotificationsUsageDescription: "Tellyhoova notifies you when downloads complete."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.matchavez.tellyhoova
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        INFOPLIST_FILE: Tellyhoova/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "NO"
