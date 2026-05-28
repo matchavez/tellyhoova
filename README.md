@@ -42,7 +42,12 @@ brew install ffmpeg
 
 ## Installation
 
-Tellyhoova is built from source using Xcode. A pre-built release is not currently distributed.
+### Homebrew (recommended)
+
+```bash
+brew tap matchavez/tellyhoova
+brew install --cask tellyhoova
+```
 
 ### Build from source
 
@@ -66,7 +71,18 @@ Tellyhoova is built from source using Xcode. A pre-built release is not currentl
    xcodebuild -project Tellyhoova.xcodeproj -scheme Tellyhoova -configuration Debug build
    ```
 
-The app is unsigned by design, so Gatekeeper may prompt you the first time you launch it. Right-click → Open to proceed.
+### Gatekeeper warning
+
+Tellyhoova is not signed with an Apple Developer certificate, so macOS Gatekeeper will block it on the first launch with a message that the app "cannot be opened because the developer cannot be verified."
+
+To open it anyway, choose one of:
+
+- **Right-click → Open** on `Tellyhoova.app` and click **Open** in the dialog that appears.
+- Or run this once in Terminal after installing:
+
+  ```bash
+  xattr -d com.apple.quarantine /Applications/Tellyhoova.app
+  ```
 
 ---
 
