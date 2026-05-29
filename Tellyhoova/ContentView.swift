@@ -105,6 +105,8 @@ struct ContentView: View {
                 .frame(maxWidth: 160)
                 .accessibilityLabel("Video quality preset")
 
+                Spacer()
+
                 Button("Cancel") {
                     manager.cancelAll()
                     urlText = ""

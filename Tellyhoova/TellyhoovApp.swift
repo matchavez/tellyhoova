@@ -2,8 +2,21 @@ import SwiftUI
 import AppKit
 import UserNotifications
 
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { sender.windows.first?.makeKeyAndOrderFront(nil) }
+        return true
+    }
+}
+
 @main
 struct TellyhoovApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     init() {
         NSApplication.shared.applicationIconImage = NSImage(named: "AppIcon")
         let center = UNUserNotificationCenter.current()
