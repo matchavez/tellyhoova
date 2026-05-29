@@ -49,6 +49,10 @@ brew tap matchavez/tellyhoova
 brew install --cask tellyhoova
 ```
 
+### Direct download
+
+Download the latest `.dmg` from the [Releases page](https://github.com/matchavez/tellyhoova/releases/latest), open it, and drag **Tellyhoova.app** to your Applications folder.
+
 ### Build from source
 
 1. Clone the repository:
@@ -161,13 +165,24 @@ Open settings with the **⚙** gear icon in the URL bar, or via **⌘,**.
 
 ## Themes
 
-Tellyhoova ships with three colour themes, selectable in **Settings → Format**:
+Tellyhoova ships with 14 colour themes, selectable in **Settings → Format**:
 
 | Theme | Character |
 |---|---|
 | **Studio Slate** | Dark blue-grey with blue accent |
 | **Signal Amber** | Dark warm-brown with amber accent |
 | **Aurora** | Deep indigo with teal accent |
+| **Midnight Ocean** | Very dark navy with cyan accent |
+| **Forest Dark** | Dark green with sage accent |
+| **Rose Noir** | Dark plum with pink accent |
+| **Crimson Dark** | Dark red with crimson accent |
+| **Deep Purple** | Dark purple with violet accent |
+| **Cyberpunk** | Near-black with electric yellow accent |
+| **Vintage Terminal** | Black with classic green phosphor text |
+| **Sunset** | Dark purple-brown with orange accent |
+| **Steel Blue** | Dark slate with steel blue accent |
+| **Arctic** | Light grey-blue with deep blue accent |
+| **Parchment** | Warm cream with saddle-brown accent |
 
 ---
 
