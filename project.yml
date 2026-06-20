@@ -26,14 +26,16 @@ targets:
       properties:
         CFBundleName: Tellyhoova
         CFBundleDisplayName: Tellyhoova
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSMinimumSystemVersion: "15.0"
         NSHighResolutionCapable: true
         NSUserNotificationsUsageDescription: "Tellyhoova notifies you when downloads complete."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.matchavez.tellyhoova
-        MARKETING_VERSION: "1.0.2"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "1.0.3"
+        CURRENT_PROJECT_VERSION: "4"
         SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         INFOPLIST_FILE: Tellyhoova/Info.plist

@@ -202,6 +202,15 @@ Check that notifications are enabled in **Settings → Output** and that macOS h
 
 ---
 
+## Changelog
+
+### 1.0.3
+
+- Fixed a hang on long downloads where the UI would lock up and memory would climb into the gigabytes. yt-dlp progress ticks were being stored as individual log entries, so the log array and the SwiftUI view tree grew without bound for the length of a download. Progress now updates the status line only, and the log is capped.
+- Wired the bundle version to the project version so the app reports its real version number instead of always showing 1.0 (1).
+
+---
+
 ## License
 
 MIT

@@ -115,7 +115,7 @@ final class DownloadManager {
         defer { outputFolder.stopAccessingSecurityScopedResource() }
 
         var args = buildArgs(for: item, outputFolder: outputFolder, settings: settings)
-        item.log.append("$ yt-dlp \(args.joined(separator: " "))")
+        item.appendLog("$ yt-dlp \(args.joined(separator: " "))")
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: settings.ytdlpPath)
@@ -137,21 +137,27 @@ final class DownloadManager {
 
         outHandle.readabilityHandler = { [weak item] handle in
             let data = handle.availableData
-            guard !data.isEmpty, let line = String(data: data, encoding: .utf8) else { return }
+            guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
             DispatchQueue.main.async {
-                for l in line.components(separatedBy: "\n") where !l.isEmpty {
-                    item?.log.append(l)
+                for l in chunk.components(separatedBy: "\n") where !l.isEmpty {
+                    // A [download] xx% line updates progress/statusText only.
+                    // Keeping it out of the log is what stops the unbounded
+                    // array growth and the layout/accessibility storm.
+                    let isProgress = l.contains("[download]") && l.contains("%")
                     Self.parseProgress(line: l, into: item)
+                    if !isProgress {
+                        item?.appendLog(l)
+                    }
                 }
             }
         }
 
         errHandle.readabilityHandler = { [weak item] handle in
             let data = handle.availableData
-            guard !data.isEmpty, let line = String(data: data, encoding: .utf8) else { return }
+            guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
             DispatchQueue.main.async {
-                for l in line.components(separatedBy: "\n") where !l.isEmpty {
-                    item?.log.append("[err] \(l)")
+                for l in chunk.components(separatedBy: "\n") where !l.isEmpty {
+                    item?.appendLog("[err] \(l)")
                 }
             }
         }

@@ -40,8 +40,19 @@ final class DownloadItem: Identifiable {
     var isLogExpanded = true
     var filename: String?
 
+    private let maxLogLines = 800
+
     init(url: String) {
         self.url = url
+    }
+
+    // Append a transcript line, trimming in batches so we never retain the
+    // whole download's output. Progress ticks must not come through here.
+    func appendLog(_ line: String) {
+        log.append(line)
+        if log.count > maxLogLines + 200 {
+            log.removeFirst(log.count - maxLogLines)
+        }
     }
 
     var displayURL: String {
