@@ -123,8 +123,8 @@ Tellyhoova posts a system notification when each download completes. Grant notif
 | **Best ≤ 720p** | Best stream at or below 720p | No |
 | **Best ≤ 480p** | Best stream at or below 480p | No |
 | **Audio Only (best)** | Best available audio, no video, source codec as-is (usually Opus) | — |
-| **Audio Only (M4A)** | AAC audio in an M4A container, no video | — |
-| **Audio Only (MP3)** | MP3 audio, no video | — |
+| **Audio Only (M4A)** | AAC audio in an M4A container, no video, bitrate set by **Settings → Format → Audio bitrate** (default 256 kbps) | — |
+| **Audio Only (MP3)** | MP3 audio, no video, bitrate set by **Settings → Format → Audio bitrate** (default 256 kbps) | — |
 | **Custom…** | Enter any yt-dlp `-f` format string | Depends on format |
 
 ---
@@ -136,6 +136,7 @@ Open settings with the **⚙** gear icon in the URL bar, or via **⌘,**.
 ### Format
 
 - **Quality preset** — choose from the table above, or enter a custom yt-dlp format string.
+- **Audio bitrate** — target bitrate for the Audio Only (M4A) and Audio Only (MP3) presets (128/192/256/320 kbps). Only shown when one of those presets is selected. This is a fixed target, not the content-adaptive default yt-dlp otherwise uses, so output size is predictable regardless of source loudness/complexity.
 - **Embed thumbnail** — writes the video thumbnail into the file (requires ffmpeg).
 - **Embed metadata** — writes title, uploader, and other metadata into the file.
 - **Remove SponsorBlock segments** — strips sponsored segments using the SponsorBlock database (requires ffmpeg).
@@ -204,6 +205,11 @@ Check that notifications are enabled in **Settings → Output** and that macOS h
 ---
 
 ## Changelog
+
+### 1.0.5
+
+- Added an **Audio bitrate** setting (128/192/256/320 kbps) for the M4A and MP3 audio-only presets. Previously these relied on yt-dlp's default content-adaptive VBR quality, which could produce surprisingly low bitrates (e.g. 64 kbps MP3) on quiet or low-complexity source audio.
+- Audio Only (M4A) and Audio Only (MP3) now select the true best-available audio stream before transcoding, rather than restricting to a source stream matching the target container/extension (which on YouTube often meant a fixed 128 kbps AAC stream regardless of what higher-bitrate audio was actually available).
 
 ### 1.0.4
 

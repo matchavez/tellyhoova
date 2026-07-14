@@ -21,8 +21,8 @@ enum FormatPreset: String, CaseIterable, Identifiable {
         case .best720p:    return #"bv*[height<=720]+ba/b"#
         case .best480p:    return #"bv*[height<=480]+ba/b"#
         case .audioOnly:   return "bestaudio/best"
-        case .audioM4A:    return "bestaudio[ext=m4a]/bestaudio/best"
-        case .audioMP3:    return "bestaudio[ext=mp3]/bestaudio/best"
+        case .audioM4A:    return "bestaudio/best"
+        case .audioMP3:    return "bestaudio/best"
         case .custom:      return ""
         }
     }

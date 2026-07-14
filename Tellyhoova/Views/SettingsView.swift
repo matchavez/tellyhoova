@@ -60,6 +60,15 @@ private struct FormatTab: View {
                 }
 
                 presetNote
+
+                if settings.formatPreset.audioFormat != nil {
+                    Picker("Audio bitrate", selection: $settings.audioBitrate) {
+                        ForEach(AudioBitrate.allCases) { bitrate in
+                            Text(bitrate.rawValue).tag(bitrate)
+                        }
+                    }
+                    .accessibilityLabel("Audio bitrate")
+                }
             } header: {
                 Text("Video Format")
             }
@@ -96,11 +105,11 @@ private struct FormatTab: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .audioM4A:
-            Text("Extracts audio only and transcodes to AAC (.m4a) — plays natively in QuickTime Player and iOS.")
+            Text("Extracts audio only and transcodes to AAC (.m4a) at the bitrate below — plays natively in QuickTime Player and iOS.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .audioMP3:
-            Text("Extracts audio only and transcodes to MP3 (.mp3).")
+            Text("Extracts audio only and transcodes to MP3 (.mp3) at the bitrate below.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .custom:

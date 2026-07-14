@@ -53,6 +53,9 @@ final class AppSettings: ObservableObject {
     @Published var theme: AppTheme {
         didSet { UserDefaults.standard.set(theme.rawValue, forKey: "theme") }
     }
+    @Published var audioBitrate: AudioBitrate {
+        didSet { UserDefaults.standard.set(audioBitrate.rawValue, forKey: "audioBitrate") }
+    }
 
     private init() {
         let ud = UserDefaults.standard
@@ -72,6 +75,7 @@ final class AppSettings: ObservableObject {
         sponsorblockRemove = ud.object(forKey: "sponsorblockRemove") as? Bool ?? false
         concurrentFragments = ud.object(forKey: "concurrentFragments") as? Int ?? 1
         theme = AppTheme(rawValue: ud.string(forKey: "theme") ?? "") ?? .studioSlate
+        audioBitrate = AudioBitrate(rawValue: ud.string(forKey: "audioBitrate") ?? "") ?? .k256
     }
 
     var resolvedFormat: String {

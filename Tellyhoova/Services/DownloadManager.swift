@@ -226,6 +226,7 @@ final class DownloadManager {
             args += ["--extract-audio"]
             if let audioFormat = settings.formatPreset.audioFormat {
                 args += ["--audio-format", audioFormat]
+                args += ["--audio-quality", settings.audioBitrate.ytdlpValue]
             }
         } else {
             args += ["--merge-output-format", "mp4"]

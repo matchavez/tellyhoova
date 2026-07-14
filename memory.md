@@ -17,7 +17,7 @@ Native macOS SwiftUI app, a GUI frontend for `yt-dlp` (paste URL → pick qualit
 6. Bump the cask in **matchavez/homebrew-tellyhoova** (version + sha256 of the new dmg) — separate repo, don't forget it.
 
 ## Release history / notable fixes
-- 1.0.0 (2026-05-28) → 1.0.1 (Gatekeeper "damaged" caveat + quarantine-strip guidance) → 1.0.2 (themes, quality picker, dock icon/window-close fixes) → 1.0.3 (2026-06-20: fixed long-download hang + memory growth, wired bundle version to project version) → 1.0.4 (2026-07-14: added Audio Only (M4A) preset; fixed Audio Only (MP3) silently outputting Opus by finally passing `--audio-format` to yt-dlp).
+- 1.0.0 (2026-05-28) → 1.0.1 (Gatekeeper "damaged" caveat + quarantine-strip guidance) → 1.0.2 (themes, quality picker, dock icon/window-close fixes) → 1.0.3 (2026-06-20: fixed long-download hang + memory growth, wired bundle version to project version) → 1.0.4 (2026-07-14: added Audio Only (M4A) preset; fixed Audio Only (MP3) silently outputting Opus by finally passing `--audio-format` to yt-dlp) → 1.0.5 (2026-07-14: added adjustable Audio bitrate setting (128–320kbps) since yt-dlp's default VBR quality could land as low as 64kbps on quiet source audio; M4A/MP3 presets now grab the true best-available audio stream before transcoding instead of restricting to a same-extension source stream).
 - Notification permission request was moved to app init and uses provisional authorization (App Store-less deployment nuance) with a "Glass" sound fallback if the system sound is unavailable.
 - The homebrew-tellyhoova cask now auto-strips quarantine on install (`postflight` xattr strip) so most users never see the Gatekeeper dialog described in the README.
 
