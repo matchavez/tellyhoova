@@ -206,6 +206,10 @@ Check that notifications are enabled in **Settings → Output** and that macOS h
 
 ## Changelog
 
+### 1.0.7
+
+- Added a settings (gear) button to the main toolbar, between **Show in Finder** and the quality preset dropdown, for quicker access alongside the existing gear icon in the URL field.
+
 ### 1.0.6
 
 - Added a **V0 (best VBR)** option to the Audio bitrate picker, alongside the existing fixed 128/192/256/320 kbps choices — LAME's highest-quality variable bitrate preset.

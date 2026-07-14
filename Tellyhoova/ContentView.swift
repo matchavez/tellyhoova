@@ -93,6 +93,13 @@ struct ContentView: View {
                 }
                 .accessibilityLabel("Open download folder in Finder")
 
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Open settings")
+
                 Spacer()
 
                 Picker("Quality", selection: $settings.formatPreset) {
