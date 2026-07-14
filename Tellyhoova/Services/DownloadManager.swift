@@ -224,6 +224,9 @@ final class DownloadManager {
         if settings.concurrentFragments > 1 { args += ["-N", "\(settings.concurrentFragments)"] }
         if settings.formatPreset.isAudioOnly {
             args += ["--extract-audio"]
+            if let audioFormat = settings.formatPreset.audioFormat {
+                args += ["--audio-format", audioFormat]
+            }
         } else {
             args += ["--merge-output-format", "mp4"]
         }

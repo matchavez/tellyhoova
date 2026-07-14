@@ -91,8 +91,16 @@ private struct FormatTab: View {
             Text("Downloads the best available stream at or below the selected resolution. May use VP9 or AV1 codecs — these won't open in QuickTime Player. Use VLC or IINA to play them, or switch to QuickTime Compatible for native playback.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-        case .audioOnly, .audioMP3:
-            Text("Extracts audio only — no video track is downloaded.")
+        case .audioOnly:
+            Text("Extracts audio only, keeping the source codec as-is — usually Opus (.opus) for YouTube.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .audioM4A:
+            Text("Extracts audio only and transcodes to AAC (.m4a) — plays natively in QuickTime Player and iOS.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .audioMP3:
+            Text("Extracts audio only and transcodes to MP3 (.mp3).")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .custom:
