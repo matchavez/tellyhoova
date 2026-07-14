@@ -122,7 +122,8 @@ Tellyhoova posts a system notification when each download completes. Grant notif
 | **Best ≤ 1080p** | Best stream at or below 1080p | No |
 | **Best ≤ 720p** | Best stream at or below 720p | No |
 | **Best ≤ 480p** | Best stream at or below 480p | No |
-| **Audio Only (best)** | Best available audio, no video | — |
+| **Audio Only (best)** | Best available audio, no video, source codec as-is (usually Opus) | — |
+| **Audio Only (M4A)** | AAC audio in an M4A container, no video | — |
 | **Audio Only (MP3)** | MP3 audio, no video | — |
 | **Custom…** | Enter any yt-dlp `-f` format string | Depends on format |
 
@@ -203,6 +204,11 @@ Check that notifications are enabled in **Settings → Output** and that macOS h
 ---
 
 ## Changelog
+
+### 1.0.4
+
+- Added an **Audio Only (M4A)** preset that transcodes to AAC/M4A.
+- Fixed **Audio Only (MP3)** silently producing Opus files instead of MP3 — audio-only presets now pass `--audio-format` through to yt-dlp so the requested codec is actually honored.
 
 ### 1.0.3
 
