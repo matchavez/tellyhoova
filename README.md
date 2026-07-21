@@ -159,9 +159,10 @@ Open settings with the **⚙** gear icon in the URL bar, or via **⌘,**.
 - **Retries** — number of times yt-dlp retries a failed fragment (default: 10).
 - **Concurrent fragments** — parallel fragment downloads (default: 1). Increasing this can speed up segmented streams.
 
-### Advanced
+### Dependencies
 
-- **yt-dlp path** — full path to the yt-dlp executable. A green dot confirms yt-dlp is found at that path.
+- **yt-dlp path** — full path to the yt-dlp executable. A status dot confirms whether each dependency below is found, with a one-click **Install** button where possible.
+- **yt-dlp**, **ffmpeg**, **Pillow**, **Homebrew** — checked automatically when Settings opens (and at launch, surfaced as a red dot on the gear icon if anything's missing). Pillow is required by yt-dlp to embed YouTube's WebP thumbnails as cover art in MP4/M4A files — without it, downloads with **Embed thumbnail** on will finish extracting audio/video but still report Failed. Homebrew can't be auto-installed (it needs an interactive Terminal session), so that row hands you the install command instead.
 
 ---
 
@@ -191,13 +192,13 @@ Tellyhoova ships with 14 colour themes, selectable in **Settings → Format**:
 ## Troubleshooting
 
 **Downloads fail immediately with "yt-dlp missing"**
-Install yt-dlp (`brew install yt-dlp`) and confirm the path shown in **Settings → Advanced** points to the binary.
+Install yt-dlp (`brew install yt-dlp`) and confirm the path shown in **Settings → Dependencies** points to the binary.
 
 **Downloads complete but the file won't open in QuickTime**
 Switch to the **QuickTime Compatible** preset. Best Quality and resolution-capped presets may produce VP9 or AV1 files that QuickTime cannot play. Use [VLC](https://www.videolan.org/vlc/) or [IINA](https://iina.io) instead.
 
-**Thumbnail or metadata embedding fails**
-These features require ffmpeg. Install it with `brew install ffmpeg`.
+**Thumbnail or metadata embedding fails, or a download reports Failed right after extraction finishes**
+Check **Settings → Dependencies**. Metadata/merging requires ffmpeg; embedding a thumbnail into MP4/M4A additionally requires Pillow, since YouTube thumbnails are WebP and yt-dlp needs Pillow to convert them to a format MP4/M4A cover art can store. Both show a one-click Install button when missing.
 
 **No completion notification appears**
 Check that notifications are enabled in **Settings → Output** and that macOS has permission in **System Settings → Notifications → Tellyhoova**.
@@ -205,6 +206,11 @@ Check that notifications are enabled in **Settings → Output** and that macOS h
 ---
 
 ## Changelog
+
+### 1.0.8
+
+- Replaced the Advanced settings tab with a **Dependencies** tab that checks yt-dlp, ffmpeg, Pillow, and Homebrew, each with a status dot and a one-click **Install** button where possible. The gear icon shows a small red badge when something's missing.
+- Pillow detection resolves yt-dlp's *actual* Python interpreter (from its shebang), since Homebrew's yt-dlp runs in its own isolated venv rather than the system Python — installing Pillow system-wide wasn't enough to fix thumbnail embedding.
 
 ### 1.0.7
 

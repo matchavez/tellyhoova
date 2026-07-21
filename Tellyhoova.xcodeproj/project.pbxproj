@@ -11,24 +11,24 @@
 		229B2A0C6BB6009B862D76E2 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C16F042627AFA18144EF80F6 /* Theme.swift */; };
 		4E2A04B81A5BD4F2E23F68BE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0EC463C6F9A2C028A91D484 /* SettingsView.swift */; };
 		57EC42555086955DE8C51EE2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386554EB89C5487BF06D9D44 /* ContentView.swift */; };
+		61DEFECDD0AE7D1B1D0D24DC /* DependencyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15D805E8BC6518BA937DDB07 /* DependencyManager.swift */; };
 		70191146C623E2A34AE74B4A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4501ECCCBA81B3FBAC925204 /* Assets.xcassets */; };
 		706E6B7421A036B38FB096F7 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A890AB6FEEC8541E78BF25C /* AppSettings.swift */; };
 		8ECFC6EAB2F1617384AA5590 /* DownloadItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 760F822DE1DD9F7517F62007 /* DownloadItem.swift */; };
 		C68F56D6F42684C1739DBC8B /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A7498880953897A7DE5E487 /* DownloadManager.swift */; };
-		CCEBFBA7565D416D8B1381C9 /* DependencyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31723D47B3954F1C8D2C459C /* DependencyManager.swift */; };
 		C913437A1F266C82B3E94DC2 /* TellyhoovApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 347E83469CDAAA6E1CE5B1B0 /* TellyhoovApp.swift */; };
 		F0C24599B5545AF62D9680D7 /* QueueRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 416228A5AD240901C5569430 /* QueueRowView.swift */; };
 		F45623FD8432EBC4C0EB6CAB /* FormatPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C2F8BB161695F0DB8BF661A /* FormatPreset.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		15D805E8BC6518BA937DDB07 /* DependencyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyManager.swift; sourceTree = "<group>"; };
 		347E83469CDAAA6E1CE5B1B0 /* TellyhoovApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TellyhoovApp.swift; sourceTree = "<group>"; };
 		386554EB89C5487BF06D9D44 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3C2F8BB161695F0DB8BF661A /* FormatPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatPreset.swift; sourceTree = "<group>"; };
 		416228A5AD240901C5569430 /* QueueRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueRowView.swift; sourceTree = "<group>"; };
 		4501ECCCBA81B3FBAC925204 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4A7498880953897A7DE5E487 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
-		31723D47B3954F1C8D2C459C /* DependencyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyManager.swift; sourceTree = "<group>"; };
 		760F822DE1DD9F7517F62007 /* DownloadItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadItem.swift; sourceTree = "<group>"; };
 		9A890AB6FEEC8541E78BF25C /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		A9FE4DE07FF9F3F32CF037CA /* AudioBitrate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioBitrate.swift; sourceTree = "<group>"; };
@@ -41,8 +41,8 @@
 		430E16992692BEA9361399DB /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				15D805E8BC6518BA937DDB07 /* DependencyManager.swift */,
 				4A7498880953897A7DE5E487 /* DownloadManager.swift */,
-				31723D47B3954F1C8D2C459C /* DependencyManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -167,9 +167,9 @@
 				706E6B7421A036B38FB096F7 /* AppSettings.swift in Sources */,
 				0086FFABEC49614A560BBCE2 /* AudioBitrate.swift in Sources */,
 				57EC42555086955DE8C51EE2 /* ContentView.swift in Sources */,
+				61DEFECDD0AE7D1B1D0D24DC /* DependencyManager.swift in Sources */,
 				8ECFC6EAB2F1617384AA5590 /* DownloadItem.swift in Sources */,
 				C68F56D6F42684C1739DBC8B /* DownloadManager.swift in Sources */,
-				CCEBFBA7565D416D8B1381C9 /* DependencyManager.swift in Sources */,
 				F45623FD8432EBC4C0EB6CAB /* FormatPreset.swift in Sources */,
 				F0C24599B5545AF62D9680D7 /* QueueRowView.swift in Sources */,
 				4E2A04B81A5BD4F2E23F68BE /* SettingsView.swift in Sources */,
@@ -245,14 +245,14 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "";
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				INFOPLIST_FILE = Tellyhoova/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.0.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.matchavez.tellyhoova;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
@@ -267,14 +267,14 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "";
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				INFOPLIST_FILE = Tellyhoova/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.0.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.matchavez.tellyhoova;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
