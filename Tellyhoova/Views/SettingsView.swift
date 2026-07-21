@@ -16,8 +16,8 @@ struct SettingsView: View {
                 .tabItem { Label("Subtitles", systemImage: "captions.bubble") }
             NetworkTab()
                 .tabItem { Label("Network", systemImage: "network") }
-            AdvancedTab()
-                .tabItem { Label("Advanced", systemImage: "gearshape.2") }
+            DependenciesTab()
+                .tabItem { Label("Dependencies", systemImage: "checkmark.shield") }
         }
         .frame(width: 480)
         .padding()
@@ -245,40 +245,188 @@ private struct NetworkTab: View {
     }
 }
 
-// MARK: - Advanced
+// MARK: - Dependencies
 
-private struct AdvancedTab: View {
+private struct DependenciesTab: View {
     @ObservedObject private var settings = AppSettings.shared
+    @State private var deps = DependencyManager.shared
 
     var body: some View {
         Form {
             Section {
-                LabeledContent("yt-dlp path") {
-                    HStack(spacing: 6) {
-                        TextField("/opt/homebrew/bin/yt-dlp", text: $settings.ytdlpPath)
-                            .font(.system(.body, design: .monospaced))
-                            .accessibilityLabel("Path to yt-dlp executable")
-                        Circle()
-                            .fill(settings.ytdlpExists ? Color.green : Color.red)
-                            .frame(width: 8, height: 8)
-                            .accessibilityLabel(settings.ytdlpExists ? "yt-dlp found" : "yt-dlp not found")
-                    }
-                }
-                if !settings.ytdlpExists {
-                    Text("yt-dlp not found at this path. Install with: brew install yt-dlp")
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                DependencyRow(
+                    title: "yt-dlp",
+                    state: deps.ytdlp,
+                    installTitle: "Install with Homebrew",
+                    isInstalling: deps.isInstalling
+                ) { Task { await deps.install(.ytdlp) } }
+
+                LabeledContent("Path") {
+                    TextField("/opt/homebrew/bin/yt-dlp", text: $settings.ytdlpPath)
+                        .font(.system(.caption, design: .monospaced))
+                        .accessibilityLabel("Path to yt-dlp executable")
                 }
             } header: {
                 Text("yt-dlp")
             } footer: {
-                Text("Homebrew typically installs yt-dlp at /opt/homebrew/bin/yt-dlp (Apple Silicon) or /usr/local/bin/yt-dlp (Intel).")
+                Text("Downloads the video/audio. Required for everything in Tellyhoova.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            Section {
+                DependencyRow(
+                    title: "ffmpeg",
+                    state: deps.ffmpeg,
+                    installTitle: "Install with Homebrew",
+                    isInstalling: deps.isInstalling
+                ) { Task { await deps.install(.ffmpeg) } }
+            } header: {
+                Text("ffmpeg")
+            } footer: {
+                Text("Merges video/audio streams, transcodes audio formats, and handles metadata/thumbnail embedding.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                DependencyRow(
+                    title: "Pillow",
+                    state: deps.pillow,
+                    installTitle: "Install into yt-dlp's Python",
+                    isInstalling: deps.isInstalling
+                ) { Task { await deps.install(.pillow) } }
+            } header: {
+                Text("Thumbnail Embedding")
+            } footer: {
+                Text("YouTube thumbnails are WebP images, and MP4/M4A files can't store WebP as cover art directly — yt-dlp needs Pillow to convert them first. Without it, downloads with \"Embed thumbnail\" on will finish extracting audio/video but still report Failed at the embed step.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                DependencyRow(
+                    title: "Homebrew",
+                    state: deps.homebrew,
+                    installTitle: "Show install command",
+                    isInstalling: deps.isInstalling
+                ) { Task { await deps.install(.homebrew) } }
+            } header: {
+                Text("Homebrew")
+            } footer: {
+                Text("Package manager used to install yt-dlp and ffmpeg. Installing it requires an interactive Terminal session, so Tellyhoova can only hand you the command.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !deps.installLog.isEmpty {
+                Section {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 1) {
+                                ForEach(Array(deps.installLog.enumerated()), id: \.offset) { _, line in
+                                    Text(line)
+                                        .font(.system(size: 10, design: .monospaced))
+                                        .textSelection(.enabled)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                Color.clear.frame(height: 1).id("depLogEnd")
+                            }
+                            .padding(6)
+                        }
+                        .frame(maxHeight: 160)
+                        .background(Color.black.opacity(0.85))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .accessibilityLabel("Dependency install log")
+                        .onChange(of: deps.installLog.count) { _, _ in
+                            proxy.scrollTo("depLogEnd", anchor: .bottom)
+                        }
+                    }
+                } header: {
+                    Text("Install Output")
+                }
+            }
+
+            Section {
+                Button {
+                    Task { await deps.checkAll() }
+                } label: {
+                    HStack(spacing: 6) {
+                        if deps.isChecking {
+                            ProgressView().scaleEffect(0.6)
+                        }
+                        Text("Check Again")
+                    }
+                }
+                .disabled(deps.isInstalling || deps.isChecking)
+                .accessibilityLabel("Re-check dependencies")
             }
         }
         .formStyle(.grouped)
         .padding()
+        .task {
+            await deps.checkAll()
+        }
+    }
+}
+
+private struct DependencyRow: View {
+    let title: String
+    let state: DependencyState
+    let installTitle: String
+    let isInstalling: Bool
+    let onInstall: () -> Void
+
+    var body: some View {
+        LabeledContent {
+            HStack(spacing: 8) {
+                statusText
+                if case .missing = state {
+                    Button(installTitle, action: onInstall)
+                        .disabled(isInstalling)
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                statusDot
+                Text(title)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var statusDot: some View {
+        switch state {
+        case .checking:
+            ProgressView()
+                .scaleEffect(0.5)
+                .frame(width: 8, height: 8)
+                .accessibilityLabel("\(title): checking")
+        case .ok:
+            Circle().fill(Color.green).frame(width: 8, height: 8)
+                .accessibilityLabel("\(title): found")
+        case .missing:
+            Circle().fill(Color.red).frame(width: 8, height: 8)
+                .accessibilityLabel("\(title): missing")
+        case .notApplicable:
+            Circle().fill(Color.gray).frame(width: 8, height: 8)
+                .accessibilityLabel("\(title): not applicable")
+        }
+    }
+
+    @ViewBuilder
+    private var statusText: some View {
+        switch state {
+        case .checking:
+            Text("Checking…").font(.caption).foregroundStyle(.secondary)
+        case .ok(let detail):
+            Text(detail ?? "Found").font(.caption).foregroundStyle(.secondary)
+        case .missing:
+            Text("Not found").font(.caption).foregroundStyle(.red)
+        case .notApplicable(let reason):
+            Text(reason).font(.caption).foregroundStyle(.secondary)
+        }
     }
 }
 

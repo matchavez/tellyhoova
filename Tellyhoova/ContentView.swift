@@ -12,6 +12,7 @@ struct ContentView: View {
 
     @State private var manager = DownloadManager.shared
     @ObservedObject private var settings = AppSettings.shared
+    @State private var deps = DependencyManager.shared
 
     private var palette: Palette { settings.theme.palette }
 
@@ -27,6 +28,9 @@ struct ContentView: View {
         }
         .frame(minWidth: 480, maxWidth: 600, minHeight: 480)
         .background(palette.background)
+        .task {
+            await deps.checkAll()
+        }
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
@@ -76,9 +80,10 @@ struct ContentView: View {
                     Image(systemName: "gearshape")
                         .foregroundStyle(palette.text(0.7))
                         .padding(8)
+                        .overlay(alignment: .topTrailing) { dependencyBadge }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Open settings")
+                .accessibilityLabel(deps.hasIssues ? "Open settings — dependency issue found" : "Open settings")
             }
             .background(palette.surface)
             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -97,8 +102,9 @@ struct ContentView: View {
                     showSettings = true
                 } label: {
                     Image(systemName: "gearshape")
+                        .overlay(alignment: .topTrailing) { dependencyBadge }
                 }
-                .accessibilityLabel("Open settings")
+                .accessibilityLabel(deps.hasIssues ? "Open settings — dependency issue found" : "Open settings")
 
                 Spacer()
 
@@ -188,6 +194,17 @@ struct ContentView: View {
                     .frame(maxHeight: .infinity)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var dependencyBadge: some View {
+        if deps.hasIssues {
+            Circle()
+                .fill(Color.red)
+                .frame(width: 6, height: 6)
+                .offset(x: 2, y: -2)
+                .accessibilityHidden(true)
         }
     }
 
