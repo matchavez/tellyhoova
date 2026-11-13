@@ -43,3 +43,25 @@ targets:
         CODE_SIGN_IDENTITY: ""
         CODE_SIGNING_REQUIRED: "NO"
         CODE_SIGNING_ALLOWED: "NO"
+    scheme:
+      testTargets:
+        - TellyhoovaTests
+      gatherCoverageData: true
+
+  TellyhoovaTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: TellyhoovaTests
+    dependencies:
+      - target: Tellyhoova
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.matchavez.tellyhoova.tests
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        GENERATE_INFOPLIST_FILE: "YES"
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "NO"

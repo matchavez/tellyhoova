@@ -155,6 +155,8 @@ struct ContentView: View {
                     .foregroundStyle(palette.text(0.6))
                     .padding(.leading, 16)
                 Spacer()
+                YtdlpUpdateView(onShowDetails: { showSettings = true })
+                Spacer()
                 Button("Clear finished") {
                     manager.clearCompleted()
                 }

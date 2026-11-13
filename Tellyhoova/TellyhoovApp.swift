@@ -24,7 +24,7 @@ struct TellyhoovApp: App {
         Task {
             let settings = await center.notificationSettings()
             if settings.authorizationStatus == .notDetermined {
-                try? await center.requestAuthorization(options: [.alert, .sound, .provisional])
+                _ = try? await center.requestAuthorization(options: [.alert, .sound, .provisional])
             }
         }
     }

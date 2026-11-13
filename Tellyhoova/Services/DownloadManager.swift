@@ -9,6 +9,10 @@ final class DownloadManager {
     private(set) var activeItem: DownloadItem?
     private var activeProcess: Process?
     private var isProcessing = false
+    private var cancelRequested: Set<UUID> = []
+
+    /// Seconds to wait before each automatic retry. Its length is the retry limit.
+    static let retryDelays: [Int] = [3, 8, 15]
 
     static let shared = DownloadManager()
     private init() {}
@@ -23,6 +27,8 @@ final class DownloadManager {
 
     func cancel(item: DownloadItem) {
         if activeItem?.id == item.id {
+            // Remember the user asked, so the retry loop does not start another attempt.
+            cancelRequested.insert(item.id)
             activeProcess?.terminate()
         } else {
             item.status = .cancelled
@@ -31,6 +37,7 @@ final class DownloadManager {
     }
 
     func cancelAll() {
+        if let activeItem { cancelRequested.insert(activeItem.id) }
         activeProcess?.terminate()
         for item in queue where item.status == .queued {
             item.status = .cancelled
@@ -97,6 +104,7 @@ final class DownloadManager {
     private func download(_ item: DownloadItem) async {
         isProcessing = true
         activeItem = item
+        defer { cancelRequested.remove(item.id) }
 
         let settings = AppSettings.shared
 
@@ -114,9 +122,67 @@ final class DownloadManager {
         _ = outputFolder.startAccessingSecurityScopedResource()
         defer { outputFolder.stopAccessingSecurityScopedResource() }
 
-        var args = buildArgs(for: item, outputFolder: outputFolder, settings: settings)
+        let args = buildArgs(for: item, outputFolder: outputFolder, settings: settings)
         item.appendLog("$ yt-dlp \(args.joined(separator: " "))")
 
+        // YouTube sometimes answers a valid request with a random 403 or a timeout.
+        // yt-dlp resumes the .part files, so a retry usually succeeds.
+        var attempt = 0
+        var result = await runYtdlp(item: item, args: args, outputFolder: outputFolder, settings: settings)
+        while let code = result.status, code != 0,
+              !cancelRequested.contains(item.id),
+              attempt < Self.retryDelays.count,
+              Self.isRetryable(errorLines: result.errorLines) {
+            let delay = Self.retryDelays[attempt]
+            attempt += 1
+            item.appendLog("[retry] \(Self.failureSummary(result.errorLines)). Retry \(attempt) of \(Self.retryDelays.count) in \(delay)s.")
+            guard await waitForRetry(item: item, seconds: delay, attempt: attempt) else { break }
+            item.progress = 0
+            item.statusText = "Retrying…"
+            result = await runYtdlp(item: item, args: args, outputFolder: outputFolder, settings: settings)
+        }
+
+        if let code = result.status {
+            if code == 0 {
+                item.status = .completed
+                item.progress = 1.0
+                item.statusText = attempt > 0 ? "Done (after \(attempt) \(attempt == 1 ? "retry" : "retries"))" : "Done"
+                if settings.notificationsEnabled {
+                    notify(title: "Download complete", body: item.filename ?? item.displayURL)
+                }
+            } else if cancelRequested.contains(item.id) {
+                item.status = .cancelled
+                item.statusText = "Cancelled"
+            } else {
+                let errMsg = result.errorLines.last(where: { $0.hasPrefix("ERROR") }) ?? "Exit code \(code)"
+                item.status = .failed(errMsg)
+                if Self.suggestsUpdate(errorLines: result.errorLines) {
+                    item.statusText = "Failed: blocked by the site. Try updating yt-dlp."
+                    // Refresh the "latest version" so the update button in the main window lights up.
+                    Task { await DependencyManager.shared.checkYtdlpLatest() }
+                } else {
+                    item.statusText = "Failed"
+                }
+            }
+        }
+        // status == nil means yt-dlp never launched. runYtdlp already set the failure.
+
+        finish(item: item)
+    }
+
+    private struct RunResult {
+        /// nil when the process could not be launched.
+        var status: Int32?
+        var errorLines: [String]
+    }
+
+    /// Collects stderr lines for one attempt. Only touched on the main actor.
+    @MainActor
+    private final class LineCollector {
+        var lines: [String] = []
+    }
+
+    private func runYtdlp(item: DownloadItem, args: [String], outputFolder: URL, settings: AppSettings) async -> RunResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: settings.ytdlpPath)
         process.arguments = args
@@ -134,21 +200,13 @@ final class DownloadManager {
 
         let outHandle = outPipe.fileHandleForReading
         let errHandle = errPipe.fileHandleForReading
+        let collector = LineCollector()
 
         outHandle.readabilityHandler = { [weak item] handle in
             let data = handle.availableData
             guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
             DispatchQueue.main.async {
-                for l in chunk.components(separatedBy: "\n") where !l.isEmpty {
-                    // A [download] xx% line updates progress/statusText only.
-                    // Keeping it out of the log is what stops the unbounded
-                    // array growth and the layout/accessibility storm.
-                    let isProgress = l.contains("[download]") && l.contains("%")
-                    Self.parseProgress(line: l, into: item)
-                    if !isProgress {
-                        item?.appendLog(l)
-                    }
-                }
+                Self.handleOutput(chunk, item: item)
             }
         }
 
@@ -156,12 +214,11 @@ final class DownloadManager {
             let data = handle.availableData
             guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
             DispatchQueue.main.async {
-                for l in chunk.components(separatedBy: "\n") where !l.isEmpty {
-                    item?.appendLog("[err] \(l)")
-                }
+                Self.handleErrorOutput(chunk, item: item, collector: collector)
             }
         }
 
+        var launched = true
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             process.terminationHandler = { _ in
                 DispatchQueue.main.async { continuation.resume() }
@@ -169,6 +226,7 @@ final class DownloadManager {
             do {
                 try process.run()
             } catch {
+                launched = false
                 DispatchQueue.main.async {
                     item.status = .failed(error.localizedDescription)
                     item.statusText = "Launch failed"
@@ -179,23 +237,79 @@ final class DownloadManager {
 
         outHandle.readabilityHandler = nil
         errHandle.readabilityHandler = nil
+        activeProcess = nil
 
-        if process.terminationStatus == 0 {
-            item.status = .completed
-            item.progress = 1.0
-            item.statusText = "Done"
-            if settings.notificationsEnabled {
-                notify(title: "Download complete", body: item.filename ?? item.displayURL)
-            }
-        } else if case .cancelled = item.status {
-            // already set
-        } else {
-            let errMsg = item.log.last(where: { $0.hasPrefix("[err] ERROR") }) ?? "Exit code \(process.terminationStatus)"
-            item.status = .failed(errMsg)
-            item.statusText = "Failed"
+        guard launched else { return RunResult(status: nil, errorLines: []) }
+
+        // The termination handler can fire before the last bytes are read. Drain the pipes
+        // so the final ERROR line is never missed.
+        if let rest = try? outHandle.readToEnd(), let chunk = String(data: rest, encoding: .utf8), !chunk.isEmpty {
+            Self.handleOutput(chunk, item: item)
+        }
+        if let rest = try? errHandle.readToEnd(), let chunk = String(data: rest, encoding: .utf8), !chunk.isEmpty {
+            Self.handleErrorOutput(chunk, item: item, collector: collector)
         }
 
-        finish(item: item)
+        return RunResult(status: process.terminationStatus, errorLines: collector.lines)
+    }
+
+    private static func handleOutput(_ chunk: String, item: DownloadItem?) {
+        for l in chunk.components(separatedBy: "\n") where !l.isEmpty {
+            // A [download] xx% line updates progress/statusText only.
+            // Keeping it out of the log is what stops the unbounded
+            // array growth and the layout/accessibility storm.
+            let isProgress = l.contains("[download]") && l.contains("%")
+            parseProgress(line: l, into: item)
+            if !isProgress {
+                item?.appendLog(l)
+            }
+        }
+    }
+
+    private static func handleErrorOutput(_ chunk: String, item: DownloadItem?, collector: LineCollector) {
+        for l in chunk.components(separatedBy: "\n") where !l.isEmpty {
+            item?.appendLog("[err] \(l)")
+            collector.lines.append(l)
+        }
+    }
+
+    /// Counts down the wait before a retry. Returns false if the user cancelled meanwhile.
+    private func waitForRetry(item: DownloadItem, seconds: Int, attempt: Int) async -> Bool {
+        for remaining in stride(from: seconds, to: 0, by: -1) {
+            if cancelRequested.contains(item.id) { return false }
+            item.statusText = "Retry \(attempt) of \(Self.retryDelays.count) in \(remaining)s…"
+            try? await Task.sleep(for: .seconds(1))
+        }
+        return !cancelRequested.contains(item.id)
+    }
+
+    // MARK: - Retry rules
+
+    /// Errors that are usually temporary: a random 403, rate limits, server errors, network drops.
+    /// Anything else (private video, no such format, bad URL) fails at once.
+    nonisolated static func isRetryable(errorLines: [String]) -> Bool {
+        let patterns = [
+            #"http error (403|429|5\d\d)"#,
+            #"timed out"#,
+            #"connection (reset|aborted|refused)"#,
+            #"incompleteread"#,
+            #"remote end closed"#,
+            #"unexpected eof"#,
+        ]
+        return errorLines.contains { line in
+            let lower = line.lowercased()
+            return patterns.contains { lower.range(of: $0, options: .regularExpression) != nil }
+        }
+    }
+
+    /// A 403 that keeps coming back usually means yt-dlp is out of date.
+    nonisolated static func suggestsUpdate(errorLines: [String]) -> Bool {
+        errorLines.contains { $0.lowercased().contains("http error 403") }
+    }
+
+    nonisolated static func failureSummary(_ errorLines: [String]) -> String {
+        let line = errorLines.last(where: { $0.hasPrefix("ERROR") }) ?? "Download failed"
+        return line.replacingOccurrences(of: "ERROR: ", with: "")
     }
 
     private func finish(item: DownloadItem) {
@@ -205,7 +319,8 @@ final class DownloadManager {
         processNextIfIdle()
     }
 
-    private func buildArgs(for item: DownloadItem, outputFolder: URL, settings: AppSettings) -> [String] {
+    // Non-private for unit testing (@testable import reaches internal, not private).
+    func buildArgs(for item: DownloadItem, outputFolder: URL, settings: AppSettings) -> [String] {
         var args: [String] = []
 
         args += ["-f", settings.resolvedFormat]
@@ -236,7 +351,7 @@ final class DownloadManager {
         return args
     }
 
-    private static func parseProgress(line: String, into item: DownloadItem?) {
+    static func parseProgress(line: String, into item: DownloadItem?) {
         guard let item else { return }
 
         // [download]  72.3% of    5.23MiB at    1.20MiB/s ETA 00:03

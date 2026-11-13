@@ -33,6 +33,42 @@ final class DependencyManager {
     var isInstalling = false
     var installLog: [String] = []
 
+    /// Newest yt-dlp release on GitHub, e.g. "2026.10.26". nil until checked, or if the check failed.
+    var ytdlpLatest: String?
+    var isUpdatingYtdlp = false
+    /// Result of the last update, shown in the main window. nil while idle or after a new check.
+    var ytdlpUpdateMessage: String?
+    var ytdlpUpdateFailed = false
+
+    /// The installed yt-dlp version without the leading "v", e.g. "2026.10.26".
+    var ytdlpInstalledVersion: String? {
+        guard case .ok(let detail) = ytdlp, let detail else { return nil }
+        return detail.hasPrefix("v") ? String(detail.dropFirst()) : detail
+    }
+
+    var ytdlpUpdateAvailable: Bool {
+        guard let installed = ytdlpInstalledVersion, let latest = ytdlpLatest else { return false }
+        return Self.isVersion(latest, newerThan: installed)
+    }
+
+    // MARK: - Version helpers
+
+    /// "2026.07.04" and "2026.7.4" both give [2026, 7, 4].
+    nonisolated static func versionComponents(_ version: String) -> [Int] {
+        version.split(separator: ".").map { Int($0.filter(\.isNumber)) ?? 0 }
+    }
+
+    nonisolated static func isVersion(_ a: String, newerThan b: String) -> Bool {
+        let lhs = versionComponents(a)
+        let rhs = versionComponents(b)
+        for i in 0..<max(lhs.count, rhs.count) {
+            let l = i < lhs.count ? lhs[i] : 0
+            let r = i < rhs.count ? rhs[i] : 0
+            if l != r { return l > r }
+        }
+        return false
+    }
+
     var hasIssues: Bool {
         [homebrew, ytdlp, ffmpeg, pillow].contains {
             if case .missing = $0 { return true }
@@ -113,6 +149,70 @@ final class DependencyManager {
         await checkAll()
     }
 
+    // MARK: - yt-dlp update
+
+    /// Asks GitHub for the newest yt-dlp release. Fails quietly: no network just means no update hint.
+    func checkYtdlpLatest() async {
+        guard let url = URL(string: "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest") else { return }
+        var request = URLRequest(url: url, timeoutInterval: 10)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("Tellyhoova", forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tag = json["tag_name"] as? String else { return }
+        ytdlpLatest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+    }
+
+    /// Updates yt-dlp the same way it was installed: `brew upgrade` for Homebrew, `yt-dlp -U` otherwise.
+    func updateYtdlp() async {
+        guard !isInstalling else { return }
+        isInstalling = true
+        isUpdatingYtdlp = true
+        ytdlpUpdateMessage = nil
+        ytdlpUpdateFailed = false
+        installLog.removeAll()
+
+        let path = AppSettings.shared.ytdlpPath
+        let hadPillow: Bool = { if case .ok = pillow { return true } else { return false } }()
+        let oldVersion = ytdlpInstalledVersion
+
+        let succeeded: Bool
+        if !FileManager.default.fileExists(atPath: path) {
+            succeeded = await runInstall(executable: brewPath(), arguments: ["install", "yt-dlp"])
+        } else if URL(fileURLWithPath: path).resolvingSymlinksInPath().path.contains("/Cellar/") {
+            succeeded = await runInstall(executable: brewPath(), arguments: ["upgrade", "yt-dlp"])
+        } else {
+            succeeded = await runInstall(executable: path, arguments: ["-U"])
+        }
+
+        await checkAll()
+
+        // Homebrew builds a new Python environment for each yt-dlp version, so Pillow
+        // (needed for thumbnail embedding) is lost on upgrade. Put it back.
+        if succeeded, hadPillow, case .missing = pillow, let interpreter = resolveYtdlpInterpreter() {
+            appendLog("Reinstalling Pillow into the new yt-dlp…")
+            _ = await runInstall(executable: interpreter, arguments: ["-m", "pip", "install", "--upgrade", "pillow"])
+            await checkAll()
+        }
+
+        await checkYtdlpLatest()
+
+        if !succeeded {
+            ytdlpUpdateFailed = true
+            ytdlpUpdateMessage = "Update failed. See details."
+        } else if ytdlpUpdateAvailable, let latest = ytdlpLatest {
+            ytdlpUpdateMessage = "\(latest) is not in Homebrew yet. Try again later."
+        } else if let new = ytdlpInstalledVersion, let old = oldVersion, new != old {
+            ytdlpUpdateMessage = "Updated to \(new)."
+        } else {
+            ytdlpUpdateMessage = "Already up to date."
+        }
+
+        isUpdatingYtdlp = false
+        isInstalling = false
+    }
+
     private func brewPath() -> String {
         ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"].first { FileManager.default.fileExists(atPath: $0) } ?? "/opt/homebrew/bin/brew"
     }
@@ -123,10 +223,11 @@ final class DependencyManager {
 
     // MARK: - Process helpers
 
-    private func runInstall(executable: String, arguments: [String]) async {
+    @discardableResult
+    private func runInstall(executable: String, arguments: [String]) async -> Bool {
         guard FileManager.default.fileExists(atPath: executable) else {
             appendLog("[err] \(executable) not found. Install Homebrew first: https://brew.sh")
-            return
+            return false
         }
 
         appendLog("$ \((executable as NSString).lastPathComponent) \(arguments.joined(separator: " "))")
@@ -185,8 +286,10 @@ final class DependencyManager {
 
         if process.terminationStatus == 0 {
             appendLog("✓ Done")
+            return true
         } else {
             appendLog("✗ Exited with code \(process.terminationStatus)")
+            return false
         }
     }
 

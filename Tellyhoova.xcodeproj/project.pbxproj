@@ -8,20 +8,36 @@
 
 /* Begin PBXBuildFile section */
 		0086FFABEC49614A560BBCE2 /* AudioBitrate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FE4DE07FF9F3F32CF037CA /* AudioBitrate.swift */; };
+		21C4D3BA50F8F06C5240A3C6 /* BuildArgsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156452040C22D029B725040C /* BuildArgsTests.swift */; };
 		229B2A0C6BB6009B862D76E2 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C16F042627AFA18144EF80F6 /* Theme.swift */; };
+		45E0DD1ABEB9E439D9944B82 /* ModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 907D8422BDEB399337E760B6 /* ModelTests.swift */; };
 		4E2A04B81A5BD4F2E23F68BE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0EC463C6F9A2C028A91D484 /* SettingsView.swift */; };
 		57EC42555086955DE8C51EE2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386554EB89C5487BF06D9D44 /* ContentView.swift */; };
 		61DEFECDD0AE7D1B1D0D24DC /* DependencyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15D805E8BC6518BA937DDB07 /* DependencyManager.swift */; };
 		70191146C623E2A34AE74B4A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4501ECCCBA81B3FBAC925204 /* Assets.xcassets */; };
 		706E6B7421A036B38FB096F7 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A890AB6FEEC8541E78BF25C /* AppSettings.swift */; };
+		7FD34F6C3276CD0D7B253841 /* FormatPresetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F3FE78DF076B705AA78401 /* FormatPresetTests.swift */; };
 		8ECFC6EAB2F1617384AA5590 /* DownloadItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 760F822DE1DD9F7517F62007 /* DownloadItem.swift */; };
+		B18D6AE9BC3BCC0D4FA12091 /* RetryAndUpdateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAEAE4EAFBFA266159140514 /* RetryAndUpdateTests.swift */; };
+		B5BE0E3BFDEBD03521B14763 /* YtdlpUpdateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C021C9CC2B7DB13E6E7450E /* YtdlpUpdateView.swift */; };
 		C68F56D6F42684C1739DBC8B /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A7498880953897A7DE5E487 /* DownloadManager.swift */; };
 		C913437A1F266C82B3E94DC2 /* TellyhoovApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 347E83469CDAAA6E1CE5B1B0 /* TellyhoovApp.swift */; };
 		F0C24599B5545AF62D9680D7 /* QueueRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 416228A5AD240901C5569430 /* QueueRowView.swift */; };
 		F45623FD8432EBC4C0EB6CAB /* FormatPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C2F8BB161695F0DB8BF661A /* FormatPreset.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		103993DFF7F7CA5287F64DA4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DFADDDA7DAF6419E24932B8D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E795E652D4A1563CC1CE58B8;
+			remoteInfo = Tellyhoova;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		156452040C22D029B725040C /* BuildArgsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildArgsTests.swift; sourceTree = "<group>"; };
 		15D805E8BC6518BA937DDB07 /* DependencyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyManager.swift; sourceTree = "<group>"; };
 		347E83469CDAAA6E1CE5B1B0 /* TellyhoovApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TellyhoovApp.swift; sourceTree = "<group>"; };
 		386554EB89C5487BF06D9D44 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -30,10 +46,15 @@
 		4501ECCCBA81B3FBAC925204 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4A7498880953897A7DE5E487 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
 		760F822DE1DD9F7517F62007 /* DownloadItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadItem.swift; sourceTree = "<group>"; };
+		8C021C9CC2B7DB13E6E7450E /* YtdlpUpdateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YtdlpUpdateView.swift; sourceTree = "<group>"; };
+		907D8422BDEB399337E760B6 /* ModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTests.swift; sourceTree = "<group>"; };
 		9A890AB6FEEC8541E78BF25C /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		A9FE4DE07FF9F3F32CF037CA /* AudioBitrate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioBitrate.swift; sourceTree = "<group>"; };
+		AAEAE4EAFBFA266159140514 /* RetryAndUpdateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryAndUpdateTests.swift; sourceTree = "<group>"; };
 		C0EC463C6F9A2C028A91D484 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		C16F042627AFA18144EF80F6 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		D1F3FE78DF076B705AA78401 /* FormatPresetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatPresetTests.swift; sourceTree = "<group>"; };
+		EF1BEB5747EAAD97C05041D3 /* TellyhoovaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TellyhoovaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F13725C6C7585E9C718C006F /* Tellyhoova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tellyhoova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -45,6 +66,17 @@
 				4A7498880953897A7DE5E487 /* DownloadManager.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		4CA5EB95D5A528DB7EC84018 /* TellyhoovaTests */ = {
+			isa = PBXGroup;
+			children = (
+				156452040C22D029B725040C /* BuildArgsTests.swift */,
+				D1F3FE78DF076B705AA78401 /* FormatPresetTests.swift */,
+				907D8422BDEB399337E760B6 /* ModelTests.swift */,
+				AAEAE4EAFBFA266159140514 /* RetryAndUpdateTests.swift */,
+			);
+			path = TellyhoovaTests;
 			sourceTree = "<group>";
 		};
 		643DB11DE9D3FACB97F1B3CB /* Tellyhoova */ = {
@@ -64,6 +96,7 @@
 			isa = PBXGroup;
 			children = (
 				F13725C6C7585E9C718C006F /* Tellyhoova.app */,
+				EF1BEB5747EAAD97C05041D3 /* TellyhoovaTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -73,6 +106,7 @@
 			children = (
 				416228A5AD240901C5569430 /* QueueRowView.swift */,
 				C0EC463C6F9A2C028A91D484 /* SettingsView.swift */,
+				8C021C9CC2B7DB13E6E7450E /* YtdlpUpdateView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -81,6 +115,7 @@
 			isa = PBXGroup;
 			children = (
 				643DB11DE9D3FACB97F1B3CB /* Tellyhoova */,
+				4CA5EB95D5A528DB7EC84018 /* TellyhoovaTests */,
 				6EC3E4A19B2037414E703750 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -100,6 +135,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		73615F8E7C72A5537CB3610C /* TellyhoovaTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 48E6169A1E93A1AB90B38905 /* Build configuration list for PBXNativeTarget "TellyhoovaTests" */;
+			buildPhases = (
+				77CCAAE780BB250124B9CA9A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				64A01B60D30157F1992AFA64 /* PBXTargetDependency */,
+			);
+			name = TellyhoovaTests;
+			packageProductDependencies = (
+			);
+			productName = TellyhoovaTests;
+			productReference = EF1BEB5747EAAD97C05041D3 /* TellyhoovaTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		E795E652D4A1563CC1CE58B8 /* Tellyhoova */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = CA49E06D8A58E8D4634DC7F9 /* Build configuration list for PBXNativeTarget "Tellyhoova" */;
@@ -144,6 +197,7 @@
 			projectRoot = "";
 			targets = (
 				E795E652D4A1563CC1CE58B8 /* Tellyhoova */,
+				73615F8E7C72A5537CB3610C /* TellyhoovaTests */,
 			);
 		};
 /* End PBXProject section */
@@ -175,12 +229,54 @@
 				4E2A04B81A5BD4F2E23F68BE /* SettingsView.swift in Sources */,
 				C913437A1F266C82B3E94DC2 /* TellyhoovApp.swift in Sources */,
 				229B2A0C6BB6009B862D76E2 /* Theme.swift in Sources */,
+				B5BE0E3BFDEBD03521B14763 /* YtdlpUpdateView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		77CCAAE780BB250124B9CA9A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				21C4D3BA50F8F06C5240A3C6 /* BuildArgsTests.swift in Sources */,
+				7FD34F6C3276CD0D7B253841 /* FormatPresetTests.swift in Sources */,
+				45E0DD1ABEB9E439D9944B82 /* ModelTests.swift in Sources */,
+				B18D6AE9BC3BCC0D4FA12091 /* RetryAndUpdateTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		64A01B60D30157F1992AFA64 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E795E652D4A1563CC1CE58B8 /* Tellyhoova */;
+			targetProxy = 103993DFF7F7CA5287F64DA4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		0CFBB8E20BD5B581F3AFAB09 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.matchavez.tellyhoova.tests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tellyhoova.app/Contents/MacOS/Tellyhoova";
+			};
+			name = Debug;
+		};
 		584CA47A954A7A192D371012 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -281,6 +377,28 @@
 			};
 			name = Debug;
 		};
+		6E89CE16CE20ED6DFD9CF988 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.matchavez.tellyhoova.tests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tellyhoova.app/Contents/MacOS/Tellyhoova";
+			};
+			name = Release;
+		};
 		8A3E0B012CC9512449BBA9FE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -347,6 +465,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		48E6169A1E93A1AB90B38905 /* Build configuration list for PBXNativeTarget "TellyhoovaTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0CFBB8E20BD5B581F3AFAB09 /* Debug */,
+				6E89CE16CE20ED6DFD9CF988 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		CA49E06D8A58E8D4634DC7F9 /* Build configuration list for PBXNativeTarget "Tellyhoova" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
