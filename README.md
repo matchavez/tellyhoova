@@ -107,6 +107,16 @@ brew install --cask --no-quarantine matchavez/tellyhoova/tellyhoova
 
 When you submit a playlist URL, Tellyhoova detects the item count and asks whether you want to download the entire playlist or just the first item.
 
+### Automatic retries
+
+YouTube sometimes refuses a valid download with a random **HTTP 403**, a rate limit (429), a server error or a timeout. Tellyhoova retries these up to 3 times, after 3, 8 and 15 seconds. yt-dlp picks up the partial file, so a retry doesn't start from zero. The row shows a countdown such as "Retry 1 of 3 in 3s". Press the cancel button on the row to stop retrying. Errors that won't fix themselves, such as a private video or a missing format, fail straight away.
+
+### Updating yt-dlp
+
+The Downloads bar shows your yt-dlp version. When a newer release is out, it reads "2026.7.4 > 2026.10.26 available" with an **Update** button. One click runs `brew upgrade yt-dlp` for a Homebrew install (or `yt-dlp -U` for a standalone one) and shows the output as it runs. The button is disabled while a download is running. Homebrew builds a fresh Python environment for each yt-dlp version, so Tellyhoova reinstalls Pillow afterwards to keep thumbnail embedding working.
+
+If a download still fails with a 403 after its retries, the row suggests updating yt-dlp. An out-of-date yt-dlp is the usual cause.
+
 ### Notifications
 
 Tellyhoova posts a system notification when each download completes. Grant notification permission when prompted, or enable it later in **System Settings → Notifications → Tellyhoova**. Notifications can be turned off in **Settings → Output**.
@@ -200,12 +210,24 @@ Switch to the **QuickTime Compatible** preset. Best Quality and resolution-cappe
 **Thumbnail or metadata embedding fails, or a download reports Failed right after extraction finishes**
 Check **Settings → Dependencies**. Metadata/merging requires ffmpeg; embedding a thumbnail into MP4/M4A additionally requires Pillow, since YouTube thumbnails are WebP and yt-dlp needs Pillow to convert them to a format MP4/M4A cover art can store. Both show a one-click Install button when missing.
 
+**Downloads fail with "HTTP Error 403: Forbidden"**
+Tellyhoova retries these 3 times. If it still fails, press **Update** in the Downloads bar to bring yt-dlp up to date, then try again. YouTube changes how it serves video often, and old yt-dlp versions fall behind.
+
 **No completion notification appears**
 Check that notifications are enabled in **Settings → Output** and that macOS has permission in **System Settings → Notifications → Tellyhoova**.
 
 ---
 
 ## Changelog
+
+### 1.2.0
+
+- Downloads that fail with a temporary error (HTTP 403, 429, 5xx, timeouts, dropped connections) now retry automatically, up to 3 times, and resume the partial file.
+- Added an update button to the Downloads bar. It shows your yt-dlp version, checks GitHub for the newest release and updates yt-dlp in one click. Pillow is reinstalled afterwards, since Homebrew drops it on upgrade.
+- A 403 that survives every retry now suggests updating yt-dlp.
+- Cancelling a running download now shows **Cancelled** instead of **Failed**.
+- Fixed a possible crash when yt-dlp could not be launched.
+- Added a unit-test target (XcodeGen) covering the build arguments, format presets, retry rules and version comparison.
 
 ### 1.0.8
 
