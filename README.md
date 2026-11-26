@@ -109,13 +109,13 @@ When you submit a playlist URL, Tellyhoova detects the item count and asks wheth
 
 ### Automatic retries
 
-YouTube sometimes refuses a valid download with a random **HTTP 403**, a rate limit (429), a server error or a timeout. Tellyhoova retries these up to 3 times, after 3, 8 and 15 seconds. yt-dlp picks up the partial file, so a retry doesn't start from zero. The row shows a countdown such as "Retry 1 of 3 in 3s". Press the cancel button on the row to stop retrying. Errors that won't fix themselves, such as a private video or a missing format, fail straight away.
+YouTube sometimes refuses a valid download with a random **HTTP 403**, a rate limit (429), a server error or a timeout. Tellyhoova retries these up to 3 times, after 3, 8 and 15 seconds. A 403 is retried once only, because a 403 for a geo-blocked or members-only video never clears. yt-dlp picks up the partial file, so a retry doesn't start from zero. The row shows a countdown such as "Retry 1 of 3 in 3s". Press the cancel button on the row to stop retrying. Errors that won't fix themselves, such as a private video or a missing format, fail straight away.
 
 ### Updating yt-dlp
 
 The Downloads bar shows your yt-dlp version. When a newer release is out, it reads "2026.7.4 > 2026.10.26 available" with an **Update** button. One click runs `brew upgrade yt-dlp` for a Homebrew install (or `yt-dlp -U` for a standalone one) and shows the output as it runs. The button is disabled while a download is running. Homebrew builds a fresh Python environment for each yt-dlp version, so Tellyhoova reinstalls Pillow afterwards to keep thumbnail embedding working.
 
-If a download still fails with a 403 after its retries, the row suggests updating yt-dlp. An out-of-date yt-dlp is the usual cause.
+If a download still fails with a 403 after its retry, the row says it may need a newer yt-dlp. An out-of-date yt-dlp is a common cause, but some videos are blocked for good.
 
 ### Notifications
 
@@ -166,7 +166,7 @@ Open settings with the **⚙** gear icon in the URL bar, or via **⌘,**.
 ### Network
 
 - **Rate limit** — cap download speed (e.g. `2M` for 2 MB/s, `500K` for 500 KB/s). Leave blank for unlimited.
-- **Retries** — number of times yt-dlp retries a failed fragment (default: 10).
+- **Retries** — number of times yt-dlp retries the whole download after an error (its `--retries` option, default: 10). Tellyhoova's own automatic retries come on top of this.
 - **Concurrent fragments** — parallel fragment downloads (default: 1). Increasing this can speed up segmented streams.
 
 ### Dependencies
@@ -178,7 +178,7 @@ Open settings with the **⚙** gear icon in the URL bar, or via **⌘,**.
 
 ## Themes
 
-Tellyhoova ships with 14 colour themes, selectable in **Settings → Format**:
+Tellyhoova ships with 14 colour themes, selectable in **Settings → Appearance**:
 
 | Theme | Character |
 |---|---|
@@ -211,7 +211,7 @@ Switch to the **QuickTime Compatible** preset. Best Quality and resolution-cappe
 Check **Settings → Dependencies**. Metadata/merging requires ffmpeg; embedding a thumbnail into MP4/M4A additionally requires Pillow, since YouTube thumbnails are WebP and yt-dlp needs Pillow to convert them to a format MP4/M4A cover art can store. Both show a one-click Install button when missing.
 
 **Downloads fail with "HTTP Error 403: Forbidden"**
-Tellyhoova retries these 3 times. If it still fails, press **Update** in the Downloads bar to bring yt-dlp up to date, then try again. YouTube changes how it serves video often, and old yt-dlp versions fall behind.
+Tellyhoova retries these once. If it still fails, press **Update** in the Downloads bar to bring yt-dlp up to date, then try again. YouTube changes how it serves video often, and old yt-dlp versions fall behind.
 
 **No completion notification appears**
 Check that notifications are enabled in **Settings → Output** and that macOS has permission in **System Settings → Notifications → Tellyhoova**.

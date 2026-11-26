@@ -26,6 +26,14 @@ enum DownloadStatus: Equatable {
         default: return false
         }
     }
+
+    /// Why it failed, without yt-dlp's "ERROR: " prefix, for the queue row. nil unless failed.
+    var failureDetail: String? {
+        guard case .failed(let message) = self else { return nil }
+        var text = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("ERROR: ") { text = String(text.dropFirst("ERROR: ".count)) }
+        return text.isEmpty ? nil : text
+    }
 }
 
 @Observable
@@ -33,6 +41,9 @@ enum DownloadStatus: Equatable {
 final class DownloadItem: Identifiable {
     let id = UUID()
     let url: String
+    /// Download only the video the URL points to, not the playlist around it.
+    /// Sent to yt-dlp as its own --no-playlist argument, never inside the URL text.
+    let noPlaylist: Bool
     var status: DownloadStatus = .queued
     var progress: Double = 0
     var statusText: String = "Waiting…"
@@ -42,8 +53,9 @@ final class DownloadItem: Identifiable {
 
     private let maxLogLines = 800
 
-    init(url: String) {
+    init(url: String, noPlaylist: Bool = false) {
         self.url = url
+        self.noPlaylist = noPlaylist
     }
 
     // Append a transcript line, trimming in batches so we never retain the

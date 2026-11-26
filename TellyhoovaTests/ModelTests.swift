@@ -48,6 +48,14 @@ final class DownloadStatusTests: XCTestCase {
         XCTAssertEqual(DownloadStatus.failed("x").label, "Failed")
     }
 
+    func testFailureDetailShowsTheReasonWithoutPrefix() {
+        XCTAssertEqual(DownloadStatus.failed("ERROR: [youtube] abc: Private video").failureDetail, "[youtube] abc: Private video")
+        XCTAssertEqual(DownloadStatus.failed("Exit code 1").failureDetail, "Exit code 1")
+        XCTAssertNil(DownloadStatus.failed("  ").failureDetail)
+        XCTAssertNil(DownloadStatus.completed.failureDetail)
+        XCTAssertNil(DownloadStatus.downloading.failureDetail)
+    }
+
     func testFailedEqualityComparesMessage() {
         XCTAssertEqual(DownloadStatus.failed("a"), .failed("a"))
         XCTAssertNotEqual(DownloadStatus.failed("a"), .failed("b"))
@@ -71,6 +79,21 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(s.resolvedFormat, "bv*[height<=360]+ba")
     }
 
+    func testBlankCustomFormatFallsBackToTheDefaultPreset() {
+        let s = AppSettings.shared
+        let preset = s.formatPreset
+        let custom = s.customFormat
+        defer { s.formatPreset = preset; s.customFormat = custom }
+
+        s.formatPreset = .custom
+        s.customFormat = ""
+        XCTAssertEqual(s.resolvedFormat, FormatPreset.quicktimeCompatible.formatString)
+        s.customFormat = "   "
+        XCTAssertEqual(s.resolvedFormat, FormatPreset.quicktimeCompatible.formatString)
+        s.customFormat = "  bestaudio  "
+        XCTAssertEqual(s.resolvedFormat, "bestaudio")
+    }
+
     func testResolvedOutputFolderFallsBackToDownloads() {
         // With no security-scoped bookmark set, it must resolve to ~/Downloads.
         let s = AppSettings.shared
@@ -78,6 +101,182 @@ final class AppSettingsTests: XCTestCase {
         defer { s.outputFolderBookmark = bookmark }
         s.outputFolderBookmark = nil
         XCTAssertEqual(s.resolvedOutputFolder.lastPathComponent, "Downloads")
+    }
+}
+
+/// Makes a file with the execute bit set that macOS cannot run (no shebang, not a binary),
+/// so Process.run() throws. Used to test launch failures without a real yt-dlp.
+func makeUnlaunchableExecutable() throws -> String {
+    let path = FileManager.default.temporaryDirectory
+        .appendingPathComponent("tellyhoova-unlaunchable-\(UUID().uuidString)").path
+    try Data("not a program\n".utf8).write(to: URL(fileURLWithPath: path))
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: path)
+    return path
+}
+
+@MainActor
+final class PlaylistCheckTests: XCTestCase {
+
+    private var savedPath = ""
+
+    override func setUp() async throws {
+        try await super.setUp()
+        savedPath = AppSettings.shared.ytdlpPath
+    }
+
+    override func tearDown() async throws {
+        AppSettings.shared.ytdlpPath = savedPath
+        try await super.tearDown()
+    }
+
+    func testYtdlpExistsNeedsAnExecutableFile() throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tellyhoova-plain-\(UUID().uuidString)").path
+        try Data("x".utf8).write(to: URL(fileURLWithPath: path))
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        AppSettings.shared.ytdlpPath = path
+        XCTAssertFalse(AppSettings.shared.ytdlpExists, "a file without the execute bit is not usable")
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: path)
+        XCTAssertTrue(AppSettings.shared.ytdlpExists)
+    }
+
+    func testPlaylistCheckReturnsWhenYtdlpCannotLaunch() async throws {
+        // Before the fix this await never returned: the continuation was never resumed.
+        let path = try makeUnlaunchableExecutable()
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        AppSettings.shared.ytdlpPath = path
+
+        let count = await DownloadManager.shared.checkPlaylist(url: "https://example.com/watch?v=abc")
+        XCTAssertNil(count)
+    }
+
+    func testPlaylistCheckHasATimeLimit() {
+        XCTAssertGreaterThan(DownloadManager.playlistCheckTimeout, 0)
+        XCTAssertLessThanOrEqual(DownloadManager.playlistCheckTimeout, 30)
+    }
+}
+
+/// Polls on the main actor until the condition is true. Returns false after the time limit.
+@MainActor
+func waitUntil(seconds: Double = 10, _ condition: () -> Bool) async -> Bool {
+    let end = Date().addingTimeInterval(seconds)
+    while !condition() {
+        if Date() > end { return false }
+        try? await Task.sleep(for: .milliseconds(50))
+    }
+    return true
+}
+
+@MainActor
+final class LaunchFailureTests: XCTestCase {
+
+    private var savedPath = ""
+
+    override func setUp() async throws {
+        try await super.setUp()
+        savedPath = AppSettings.shared.ytdlpPath
+    }
+
+    override func tearDown() async throws {
+        AppSettings.shared.ytdlpPath = savedPath
+        try await super.tearDown()
+    }
+
+    func testLaunchFailureShowsAReasonAndLogsIt() async throws {
+        let path = try makeUnlaunchableExecutable()
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        AppSettings.shared.ytdlpPath = path
+
+        let manager = DownloadManager.shared
+        manager.enqueue("https://example.com/watch?v=launchfail")
+        let item = try XCTUnwrap(manager.queue.last)
+        defer { manager.remove(item: item) }
+
+        let finished = await waitUntil { item.status.isTerminal }
+        XCTAssertTrue(finished)
+        XCTAssertEqual(item.statusText, "Launch failed")
+        XCTAssertNotNil(item.status.failureDetail)
+        XCTAssertTrue(item.log.contains { $0.hasPrefix("[err] Could not start yt-dlp") })
+    }
+
+    func testTwoQuickEnqueuesStartEachItemOnce() async throws {
+        let path = try makeUnlaunchableExecutable()
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        AppSettings.shared.ytdlpPath = path
+
+        let manager = DownloadManager.shared
+        manager.enqueue("https://example.com/watch?v=first")
+        let first = try XCTUnwrap(manager.queue.last)
+        manager.enqueue("https://example.com/watch?v=second")
+        let second = try XCTUnwrap(manager.queue.last)
+        defer { manager.remove(item: first); manager.remove(item: second) }
+
+        let finished = await waitUntil { first.status.isTerminal && second.status.isTerminal }
+        XCTAssertTrue(finished)
+        // Each item is launched exactly once. Before the fix the first item started twice.
+        XCTAssertEqual(first.log.filter { $0.hasPrefix("$ yt-dlp") }.count, 1)
+        XCTAssertEqual(second.log.filter { $0.hasPrefix("$ yt-dlp") }.count, 1)
+    }
+
+    func testQueueWaitsWhileYtdlpIsBeingInstalled() async throws {
+        let path = try makeUnlaunchableExecutable()
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        AppSettings.shared.ytdlpPath = path
+
+        let deps = DependencyManager.shared
+        let manager = DownloadManager.shared
+        deps.isInstalling = true
+        manager.enqueue("https://example.com/watch?v=waits")
+        let item = try XCTUnwrap(manager.queue.last)
+        defer {
+            deps.isInstalling = false
+            if !item.status.isTerminal { manager.cancel(item: item) }
+            manager.remove(item: item)
+        }
+
+        try? await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(item.status, .queued, "no download starts while an install runs")
+        XCTAssertTrue(item.log.isEmpty)
+
+        deps.isInstalling = false
+        manager.resumeQueue()
+        let finished = await waitUntil { item.status.isTerminal }
+        XCTAssertTrue(finished, "the queue starts again when the install ends")
+    }
+
+    func testQuittingCancelsQueuedDownloads() throws {
+        let deps = DependencyManager.shared
+        let manager = DownloadManager.shared
+        // Hold the queue still, so the item is still queued when the app quits.
+        deps.isInstalling = true
+        defer { deps.isInstalling = false }
+        manager.enqueue("https://example.com/watch?v=quit")
+        let item = try XCTUnwrap(manager.queue.last)
+        defer { manager.remove(item: item) }
+
+        AppDelegate().applicationWillTerminate(Notification(name: Notification.Name("TellyhoovaTestQuit")))
+
+        XCTAssertEqual(item.status, .cancelled)
+    }
+
+    func testItemCancelledBeforeItStartsIsNotDownloaded() async throws {
+        let path = try makeUnlaunchableExecutable()
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        AppSettings.shared.ytdlpPath = path
+
+        let manager = DownloadManager.shared
+        manager.enqueue("https://example.com/watch?v=cancelled")
+        let item = try XCTUnwrap(manager.queue.last)
+        defer { manager.remove(item: item) }
+        manager.cancel(item: item)
+
+        let idle = await waitUntil { !manager.hasActive && manager.pendingCount == 0 }
+        XCTAssertTrue(idle)
+        try? await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(item.status, .cancelled)
+        XCTAssertTrue(item.log.isEmpty)
     }
 }
 

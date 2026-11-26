@@ -16,6 +16,14 @@ enum Dependency: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// What the yt-dlp button in the main window does when pressed.
+enum YtdlpButtonAction: Equatable {
+    case install
+    case update
+    /// Only asks GitHub for the newest version. Changes nothing on the Mac.
+    case check
+}
+
 private let dependencySearchPath = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 @Observable
@@ -36,6 +44,7 @@ final class DependencyManager {
     /// Newest yt-dlp release on GitHub, e.g. "2026.10.26". nil until checked, or if the check failed.
     var ytdlpLatest: String?
     var isUpdatingYtdlp = false
+    var isCheckingYtdlpLatest = false
     /// Result of the last update, shown in the main window. nil while idle or after a new check.
     var ytdlpUpdateMessage: String?
     var ytdlpUpdateFailed = false
@@ -49,6 +58,11 @@ final class DependencyManager {
     var ytdlpUpdateAvailable: Bool {
         guard let installed = ytdlpInstalledVersion, let latest = ytdlpLatest else { return false }
         return Self.isVersion(latest, newerThan: installed)
+    }
+
+    nonisolated static func ytdlpButtonAction(ytdlpMissing: Bool, updateAvailable: Bool) -> YtdlpButtonAction {
+        if ytdlpMissing { return .install }
+        return updateAvailable ? .update : .check
     }
 
     // MARK: - Version helpers
@@ -146,6 +160,7 @@ final class DependencyManager {
         }
 
         isInstalling = false
+        DownloadManager.shared.resumeQueue()
         await checkAll()
     }
 
@@ -164,6 +179,22 @@ final class DependencyManager {
         ytdlpLatest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
     }
 
+    /// The "Check for update" button: asks GitHub and reports. It never installs or upgrades.
+    func checkForYtdlpUpdate() async {
+        guard !isCheckingYtdlpLatest else { return }
+        isCheckingYtdlpLatest = true
+        ytdlpUpdateMessage = nil
+        ytdlpUpdateFailed = false
+        ytdlpLatest = nil
+        await checkYtdlpLatest()
+        if ytdlpLatest == nil {
+            ytdlpUpdateMessage = "Could not check for an update. Try again later."
+        } else if !ytdlpUpdateAvailable {
+            ytdlpUpdateMessage = "yt-dlp is up to date."
+        }
+        isCheckingYtdlpLatest = false
+    }
+
     /// Updates yt-dlp the same way it was installed: `brew upgrade` for Homebrew, `yt-dlp -U` otherwise.
     func updateYtdlp() async {
         guard !isInstalling else { return }
@@ -178,11 +209,15 @@ final class DependencyManager {
         let oldVersion = ytdlpInstalledVersion
 
         let succeeded: Bool
+        let usedHomebrew: Bool
         if !FileManager.default.fileExists(atPath: path) {
+            usedHomebrew = true
             succeeded = await runInstall(executable: brewPath(), arguments: ["install", "yt-dlp"])
         } else if URL(fileURLWithPath: path).resolvingSymlinksInPath().path.contains("/Cellar/") {
+            usedHomebrew = true
             succeeded = await runInstall(executable: brewPath(), arguments: ["upgrade", "yt-dlp"])
         } else {
+            usedHomebrew = false
             succeeded = await runInstall(executable: path, arguments: ["-U"])
         }
 
@@ -198,19 +233,43 @@ final class DependencyManager {
 
         await checkYtdlpLatest()
 
-        if !succeeded {
-            ytdlpUpdateFailed = true
-            ytdlpUpdateMessage = "Update failed. See details."
-        } else if ytdlpUpdateAvailable, let latest = ytdlpLatest {
-            ytdlpUpdateMessage = "\(latest) is not in Homebrew yet. Try again later."
-        } else if let new = ytdlpInstalledVersion, let old = oldVersion, new != old {
-            ytdlpUpdateMessage = "Updated to \(new)."
-        } else {
-            ytdlpUpdateMessage = "Already up to date."
-        }
+        let result = Self.updateResult(
+            succeeded: succeeded,
+            usedHomebrew: usedHomebrew,
+            stillBehindLatest: ytdlpUpdateAvailable ? ytdlpLatest : nil,
+            oldVersion: oldVersion,
+            newVersion: ytdlpInstalledVersion
+        )
+        ytdlpUpdateMessage = result.message
+        ytdlpUpdateFailed = result.failed
 
         isUpdatingYtdlp = false
         isInstalling = false
+        DownloadManager.shared.resumeQueue()
+    }
+
+    /// The message shown after an update. Only a Homebrew update can be "not in Homebrew yet";
+    /// a yt-dlp -U that leaves an older version means the update did not take.
+    nonisolated static func updateResult(
+        succeeded: Bool,
+        usedHomebrew: Bool,
+        stillBehindLatest latest: String?,
+        oldVersion: String?,
+        newVersion: String?
+    ) -> (message: String, failed: Bool) {
+        if !succeeded {
+            return ("Update failed. See details.", true)
+        }
+        if let latest {
+            if usedHomebrew {
+                return ("\(latest) is not in Homebrew yet. Try again later.", false)
+            }
+            return ("\(latest) did not install. See details.", true)
+        }
+        if let new = newVersion, let old = oldVersion, new != old {
+            return ("Updated to \(new).", false)
+        }
+        return ("Already up to date.", false)
     }
 
     private func brewPath() -> String {
@@ -266,6 +325,7 @@ final class DependencyManager {
             }
         }
 
+        var launched = true
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             process.terminationHandler = { _ in
                 DispatchQueue.main.async { continuation.resume() }
@@ -273,6 +333,7 @@ final class DependencyManager {
             do {
                 try process.run()
             } catch {
+                launched = false
                 let message = error.localizedDescription
                 DispatchQueue.main.async { [weak self] in
                     self?.appendLog("[err] Failed to launch: \(message)")
@@ -283,6 +344,9 @@ final class DependencyManager {
 
         outHandle.readabilityHandler = nil
         errHandle.readabilityHandler = nil
+
+        // terminationStatus must not be read on a process that never launched.
+        guard launched else { return false }
 
         if process.terminationStatus == 0 {
             appendLog("✓ Done")

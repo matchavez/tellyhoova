@@ -94,6 +94,74 @@ final class BuildArgsTests: XCTestCase {
         XCTAssertEqual(args({ $0.formatPreset = .audioMP3 }).last, testURL)
     }
 
+    func testFirstItemOnlyPassesNoPlaylistAsItsOwnArgument() {
+        // Regression guard for the 1.2.0 bug: "Download first item only" put
+        // " --no-playlist" inside the URL text, so yt-dlp never saw the flag.
+        let item = DownloadItem(url: testURL, noPlaylist: true)
+        let a = manager.buildArgs(for: item, outputFolder: outputFolder, settings: AppSettings.shared)
+        XCTAssertTrue(a.contains("--no-playlist"))
+        XCTAssertEqual(a.last, testURL)
+        XCTAssertFalse(a.contains { $0.contains(" --no-playlist") })
+        XCTAssertEqual(item.url, testURL)
+    }
+
+    func testWholePlaylistOmitsNoPlaylist() {
+        XCTAssertFalse(args().contains("--no-playlist"))
+        XCTAssertFalse(DownloadItem(url: testURL).noPlaylist)
+    }
+
+    func testEndOfOptionsMarkerComesRightBeforeTheURL() throws {
+        let a = args()
+        XCTAssertEqual(a.count - 2, a.lastIndex(of: "--"))
+        let item = DownloadItem(url: testURL, noPlaylist: true)
+        let b = manager.buildArgs(for: item, outputFolder: outputFolder, settings: AppSettings.shared)
+        XCTAssertLessThan(try XCTUnwrap(b.firstIndex(of: "--no-playlist")), try XCTUnwrap(b.lastIndex(of: "--")))
+        XCTAssertEqual(b.last, testURL)
+    }
+
+    func testOnlyHttpAndHttpsURLsAreAccepted() {
+        XCTAssertTrue(DownloadManager.isAcceptableURL("https://www.youtube.com/watch?v=abc&list=PL1"))
+        XCTAssertTrue(DownloadManager.isAcceptableURL("http://example.com/video"))
+        XCTAssertTrue(DownloadManager.isAcceptableURL("HTTPS://example.com/v"))
+
+        XCTAssertFalse(DownloadManager.isAcceptableURL(""))
+        XCTAssertFalse(DownloadManager.isAcceptableURL("--config-location /tmp/evil.conf"))
+        XCTAssertFalse(DownloadManager.isAcceptableURL("-o/tmp/x"))
+        XCTAssertFalse(DownloadManager.isAcceptableURL("file:///etc/passwd"))
+        XCTAssertFalse(DownloadManager.isAcceptableURL("ftp://example.com/v"))
+        XCTAssertFalse(DownloadManager.isAcceptableURL("https://example.com/v --no-playlist"))
+        XCTAssertFalse(DownloadManager.isAcceptableURL("example.com/v"))
+        XCTAssertFalse(DownloadManager.isAcceptableURL("https://"))
+    }
+
+    func testEnqueueRefusesTextThatIsNotAWebAddress() {
+        let before = manager.queue.count
+        manager.enqueue("--config-location /tmp/evil.conf")
+        XCTAssertEqual(manager.queue.count, before + 1)
+        let item = manager.queue.last
+        XCTAssertEqual(item?.status.isTerminal, true)
+        XCTAssertEqual(item?.statusText, "Not a web address")
+        XCTAssertTrue(item?.log.isEmpty ?? false)
+        if let item { manager.remove(item: item) }
+        XCTAssertEqual(manager.queue.count, before)
+    }
+
+    func testOutputTemplateCannotLeaveTheDownloadFolder() {
+        XCTAssertEqual(value(after: "-o", in: args({ $0.outputTemplate = "../../etc/%(title)s.%(ext)s" })),
+                       "/tmp/tellyhoova-tests/etc/%(title)s.%(ext)s")
+        XCTAssertEqual(value(after: "-o", in: args({ $0.outputTemplate = "/Users/someone/%(title)s.%(ext)s" })),
+                       "/tmp/tellyhoova-tests/Users/someone/%(title)s.%(ext)s")
+        XCTAssertEqual(value(after: "-o", in: args({ $0.outputTemplate = "" })),
+                       "/tmp/tellyhoova-tests/%(title)s.%(ext)s")
+    }
+
+    func testSafeOutputTemplateKeepsSubfolders() {
+        XCTAssertEqual(AppSettings.safeOutputTemplate("%(uploader)s/%(title)s.%(ext)s"), "%(uploader)s/%(title)s.%(ext)s")
+        XCTAssertEqual(AppSettings.safeOutputTemplate("  "), AppSettings.defaultOutputTemplate)
+        XCTAssertEqual(AppSettings.safeOutputTemplate(".."), AppSettings.defaultOutputTemplate)
+        XCTAssertEqual(AppSettings.safeOutputTemplate("~/Movies/./%(title)s.%(ext)s"), "Movies/%(title)s.%(ext)s")
+    }
+
     func testCustomPresetUsesCustomFormatString() {
         let a = args {
             $0.formatPreset = .custom

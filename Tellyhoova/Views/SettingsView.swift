@@ -136,7 +136,7 @@ private struct AppearanceTab: View {
             } header: {
                 Text("Colour Theme")
             } footer: {
-                Text("Studio Slate is a neutral blue-accented look. Signal Amber is a warm broadcast palette. Aurora is a cool teal-on-indigo scheme. Changes apply instantly.")
+                Text("Pick any of the \(AppTheme.allCases.count) colour themes. Changes apply instantly.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -43,7 +43,7 @@ struct ContentView: View {
                 manager.enqueue(pendingPlaylistURL)
             }
             Button("Download first item only") {
-                manager.enqueue(pendingPlaylistURL + " --no-playlist")
+                manager.enqueue(pendingPlaylistURL, noPlaylist: true)
             }
             Button("Cancel", role: .cancel) {}
         }

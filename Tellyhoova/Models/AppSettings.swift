@@ -78,8 +78,31 @@ final class AppSettings: ObservableObject {
         audioBitrate = AudioBitrate(rawValue: ud.string(forKey: "audioBitrate") ?? "") ?? .k256
     }
 
+    /// The -f value for yt-dlp. A blank custom string falls back to the default
+    /// preset, so yt-dlp is never sent -f with an empty value.
     var resolvedFormat: String {
-        formatPreset == .custom ? customFormat : formatPreset.formatString
+        guard formatPreset == .custom else { return formatPreset.formatString }
+        let custom = customFormat.trimmingCharacters(in: .whitespacesAndNewlines)
+        return custom.isEmpty ? FormatPreset.quicktimeCompatible.formatString : custom
+    }
+
+    nonisolated static let defaultOutputTemplate = "%(title)s.%(ext)s"
+
+    /// The filename template made safe to join to the download folder. Blank becomes the
+    /// default; "/", "~", "." and ".." parts are dropped, so files always land inside the folder.
+    /// Subfolders such as "%(uploader)s/%(title)s.%(ext)s" still work.
+    nonisolated static func safeOutputTemplate(_ template: String) -> String {
+        // Plain steps with explicit types: the chained form was too slow for the type checker.
+        let trimmed: String = template.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pieces: [Substring] = trimmed.split(separator: "/", omittingEmptySubsequences: true)
+        var parts: [String] = []
+        for piece in pieces {
+            let part = String(piece)
+            if part == ".." || part == "." || part == "~" { continue }
+            parts.append(part)
+        }
+        let joined = parts.joined(separator: "/")
+        return joined.isEmpty ? defaultOutputTemplate : joined
     }
 
     var resolvedOutputFolder: URL {
@@ -105,7 +128,8 @@ final class AppSettings: ObservableObject {
         return candidates.first { FileManager.default.fileExists(atPath: $0) } ?? "/opt/homebrew/bin/yt-dlp"
     }
 
+    /// True only when the file is there and can be run, not just when it exists.
     var ytdlpExists: Bool {
-        FileManager.default.fileExists(atPath: ytdlpPath)
+        FileManager.default.isExecutableFile(atPath: ytdlpPath)
     }
 }

@@ -49,6 +49,14 @@ struct QueueRowView: View {
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(statusColor)
                 .lineLimit(1)
+            if let detail = item.status.failureDetail {
+                Text(detail)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(palette.error)
+                    .lineLimit(3)
+                    .textSelection(.enabled)
+                    .accessibilityLabel("Reason: \(detail)")
+            }
 
             // Log toggle + self-contained scrolling panel
             if !item.log.isEmpty {

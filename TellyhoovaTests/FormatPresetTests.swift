@@ -16,6 +16,11 @@ final class FormatPresetTests: XCTestCase {
         XCTAssertFalse(FormatPreset.custom.isAudioOnly)
     }
 
+    func testThemeCountMatchesTheDocs() {
+        // README.md (Themes) and the Appearance tab footer both say 14 themes.
+        XCTAssertEqual(AppTheme.allCases.count, 14)
+    }
+
     func testAudioFormatOnlyForcedForM4AAndMP3() {
         XCTAssertEqual(FormatPreset.audioM4A.audioFormat, "m4a")
         XCTAssertEqual(FormatPreset.audioMP3.audioFormat, "mp3")

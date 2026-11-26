@@ -11,6 +11,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !flag { sender.windows.first?.makeKeyAndOrderFront(nil) }
         return true
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Stop yt-dlp and clear the queue, so no download keeps running after quit.
+        MainActor.assumeIsolated {
+            DownloadManager.shared.cancelAll()
+        }
+    }
 }
 
 @main

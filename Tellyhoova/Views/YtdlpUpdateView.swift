@@ -21,14 +21,22 @@ struct YtdlpUpdateView: View {
             } else {
                 statusText
                 Button(buttonTitle) {
-                    Task { await deps.updateYtdlp() }
+                    let action = buttonAction
+                    Task {
+                        switch action {
+                        case .check:
+                            await deps.checkForYtdlpUpdate()
+                        case .install, .update:
+                            await deps.updateYtdlp()
+                        }
+                    }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(deps.ytdlpUpdateAvailable ? palette.accent : palette.text(0.6))
                 .fontWeight(deps.ytdlpUpdateAvailable ? .semibold : .regular)
-                .disabled(deps.isInstalling || manager.hasActive)
-                .help(manager.hasActive ? "Wait for the current download to finish before updating." : "Update yt-dlp now")
-                .accessibilityLabel("Update yt-dlp")
+                .disabled(deps.isInstalling || deps.isCheckingYtdlpLatest || (buttonAction != .check && manager.hasActive))
+                .help(helpText)
+                .accessibilityLabel(buttonTitle)
 
                 if deps.ytdlpUpdateFailed {
                     Button("Details", action: onShowDetails)
@@ -42,9 +50,22 @@ struct YtdlpUpdateView: View {
         .task { await deps.checkYtdlpLatest() }
     }
 
+    private var buttonAction: YtdlpButtonAction {
+        let missing: Bool = { if case .missing = deps.ytdlp { return true } else { return false } }()
+        return DependencyManager.ytdlpButtonAction(ytdlpMissing: missing, updateAvailable: deps.ytdlpUpdateAvailable)
+    }
+
     private var buttonTitle: String {
-        if case .missing = deps.ytdlp { return "Install yt-dlp" }
-        return deps.ytdlpUpdateAvailable ? "Update" : "Check for update"
+        switch buttonAction {
+        case .install: return "Install yt-dlp"
+        case .update:  return "Update"
+        case .check:   return "Check for update"
+        }
+    }
+
+    private var helpText: String {
+        if buttonAction == .check { return "Check GitHub for a newer yt-dlp. Nothing is installed." }
+        return manager.hasActive ? "Wait for the current download to finish before updating." : "Update yt-dlp now"
     }
 
     @ViewBuilder

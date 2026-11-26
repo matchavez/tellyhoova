@@ -2,6 +2,46 @@ import Foundation
 import UserNotifications
 import AppKit
 
+/// Splits a pipe's byte stream into lines. Bytes wait here until their newline arrives,
+/// so a line or a multi-byte character (macrons, emoji) cut across two reads is decoded whole.
+struct OutputLineSplitter {
+    private var pending = Data()
+
+    /// Adds bytes and returns every line they complete, without the newline.
+    mutating func append(_ data: Data) -> [String] {
+        pending.append(data)
+        var lines: [String] = []
+        while let newline = pending.firstIndex(of: UInt8(ascii: "\n")) {
+            lines.append(Self.decode(pending[pending.startIndex..<newline]))
+            pending.removeSubrange(pending.startIndex...newline)
+        }
+        return lines.filter { !$0.isEmpty }
+    }
+
+    /// Returns the last line when the stream ends without a newline.
+    mutating func finish() -> [String] {
+        let rest = Self.decode(pending)
+        pending.removeAll()
+        return rest.isEmpty ? [] : [rest]
+    }
+
+    private static func decode(_ data: Data) -> String {
+        // Lossy decoding: a bad byte becomes U+FFFD instead of dropping the whole chunk.
+        var text = String(decoding: data, as: UTF8.self)
+        if text.hasSuffix("\r") { text.removeLast() }
+        return text
+    }
+}
+
+/// One pipe's splitter, shared by the pipe's reader thread and the main actor.
+private final class LockedLineSplitter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var splitter = OutputLineSplitter()
+
+    func append(_ data: Data) -> [String] { lock.withLock { splitter.append(data) } }
+    func finish() -> [String] { lock.withLock { splitter.finish() } }
+}
+
 @Observable
 @MainActor
 final class DownloadManager {
@@ -12,17 +52,37 @@ final class DownloadManager {
     private var cancelRequested: Set<UUID> = []
 
     /// Seconds to wait before each automatic retry. Its length is the retry limit.
-    static let retryDelays: [Int] = [3, 8, 15]
+    nonisolated static let retryDelays: [Int] = [3, 8, 15]
 
     static let shared = DownloadManager()
     private init() {}
 
-    func enqueue(_ url: String) {
+    func enqueue(_ url: String, noPlaylist: Bool = false) {
         let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        let item = DownloadItem(url: trimmed)
+        let item = DownloadItem(url: trimmed, noPlaylist: noPlaylist)
+        guard Self.isAcceptableURL(trimmed) else {
+            // Never hand this text to yt-dlp. Show it as a failed row so the user sees why.
+            item.status = .failed("Not a web address. Paste a link that starts with http:// or https://.")
+            item.statusText = "Not a web address"
+            queue.append(item)
+            return
+        }
         queue.append(item)
         processNextIfIdle()
+    }
+
+    /// True only for one http or https address. Text that starts with "-", holds spaces
+    /// or uses another scheme is refused, so it can never reach yt-dlp as an option.
+    nonisolated static func isAcceptableURL(_ text: String) -> Bool {
+        guard !text.isEmpty,
+              !text.hasPrefix("-"),
+              !text.contains(where: { $0.isWhitespace }),
+              let url = URL(string: text),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              let host = url.host(), !host.isEmpty else { return false }
+        return true
     }
 
     func cancel(item: DownloadItem) {
@@ -60,9 +120,12 @@ final class DownloadManager {
 
     // MARK: - Playlist Check
 
+    /// The playlist check gives up after this many seconds and the URL is queued as is.
+    static let playlistCheckTimeout: TimeInterval = 20
+
     func checkPlaylist(url: String) async -> Int? {
         let settings = AppSettings.shared
-        guard settings.ytdlpExists else { return nil }
+        guard settings.ytdlpExists, Self.isAcceptableURL(url) else { return nil }
 
         return await withCheckedContinuation { continuation in
             let process = Process()
@@ -72,6 +135,7 @@ final class DownloadManager {
                 "--print", "%(playlist_count)s",
                 "--playlist-items", "1",
                 "--no-warnings",
+                "--",
                 url
             ]
             var env = ProcessInfo.processInfo.environment
@@ -89,20 +153,48 @@ final class DownloadManager {
                     continuation.resume(returning: (count != nil && count! > 1) ? count : nil)
                 }
             }
-            try? process.run()
+            do {
+                try process.run()
+            } catch {
+                // The termination handler never fires for a process that did not launch.
+                // Resume here, or the spinner stays and Get stays disabled.
+                continuation.resume(returning: nil)
+                return
+            }
+            // A stuck check must not block the queue. Stopping it fires the termination
+            // handler, which resumes with nil, so the URL is queued as a plain download.
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(Self.playlistCheckTimeout))
+                if process.isRunning { process.terminate() }
+            }
         }
     }
 
     // MARK: - Download
 
+    /// Starts the next queued item, if any. Called when an install or update ends.
+    func resumeQueue() {
+        processNextIfIdle()
+    }
+
     private func processNextIfIdle() {
         guard !isProcessing else { return }
+        // Never start yt-dlp while Homebrew or yt-dlp -U is replacing it.
+        guard !DependencyManager.shared.isInstalling else { return }
         guard let next = queue.first(where: { if case .queued = $0.status { return true }; return false }) else { return }
+        // Claim the slot now, not when the Task runs, so a second call before then
+        // cannot start the same item again.
+        isProcessing = true
         Task { await download(next) }
     }
 
     private func download(_ item: DownloadItem) async {
         isProcessing = true
+        // The item may have been cancelled between being picked and this Task running.
+        guard case .queued = item.status else {
+            finish(item: item)
+            return
+        }
         activeItem = item
         defer { cancelRequested.remove(item.id) }
 
@@ -131,12 +223,13 @@ final class DownloadManager {
         var result = await runYtdlp(item: item, args: args, outputFolder: outputFolder, settings: settings)
         while let code = result.status, code != 0,
               !cancelRequested.contains(item.id),
-              attempt < Self.retryDelays.count,
+              attempt < Self.retryLimit(errorLines: result.errorLines),
               Self.isRetryable(errorLines: result.errorLines) {
             let delay = Self.retryDelays[attempt]
+            let limit = Self.retryLimit(errorLines: result.errorLines)
             attempt += 1
-            item.appendLog("[retry] \(Self.failureSummary(result.errorLines)). Retry \(attempt) of \(Self.retryDelays.count) in \(delay)s.")
-            guard await waitForRetry(item: item, seconds: delay, attempt: attempt) else { break }
+            item.appendLog("[retry] \(Self.failureSummary(result.errorLines)). Retry \(attempt) of \(limit) in \(delay)s.")
+            guard await waitForRetry(item: item, seconds: delay, attempt: attempt, of: limit) else { break }
             item.progress = 0
             item.statusText = "Retrying…"
             result = await runYtdlp(item: item, args: args, outputFolder: outputFolder, settings: settings)
@@ -157,7 +250,7 @@ final class DownloadManager {
                 let errMsg = result.errorLines.last(where: { $0.hasPrefix("ERROR") }) ?? "Exit code \(code)"
                 item.status = .failed(errMsg)
                 if Self.suggestsUpdate(errorLines: result.errorLines) {
-                    item.statusText = "Failed: blocked by the site. Try updating yt-dlp."
+                    item.statusText = Self.forbiddenHint
                     // Refresh the "latest version" so the update button in the main window lights up.
                     Task { await DependencyManager.shared.checkYtdlpLatest() }
                 } else {
@@ -201,20 +294,26 @@ final class DownloadManager {
         let outHandle = outPipe.fileHandleForReading
         let errHandle = errPipe.fileHandleForReading
         let collector = LineCollector()
+        let outLines = LockedLineSplitter()
+        let errLines = LockedLineSplitter()
 
         outHandle.readabilityHandler = { [weak item] handle in
             let data = handle.availableData
-            guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
+            guard !data.isEmpty else { return }
+            let lines = outLines.append(data)
+            guard !lines.isEmpty else { return }
             DispatchQueue.main.async {
-                Self.handleOutput(chunk, item: item)
+                Self.handleOutput(lines, item: item)
             }
         }
 
         errHandle.readabilityHandler = { [weak item] handle in
             let data = handle.availableData
-            guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
+            guard !data.isEmpty else { return }
+            let lines = errLines.append(data)
+            guard !lines.isEmpty else { return }
             DispatchQueue.main.async {
-                Self.handleErrorOutput(chunk, item: item, collector: collector)
+                Self.handleErrorOutput(lines, item: item, collector: collector)
             }
         }
 
@@ -228,6 +327,7 @@ final class DownloadManager {
             } catch {
                 launched = false
                 DispatchQueue.main.async {
+                    item.appendLog("[err] Could not start yt-dlp: \(error.localizedDescription)")
                     item.status = .failed(error.localizedDescription)
                     item.statusText = "Launch failed"
                     continuation.resume()
@@ -241,20 +341,28 @@ final class DownloadManager {
 
         guard launched else { return RunResult(status: nil, errorLines: []) }
 
+        // Lines the reader threads already sent to the main queue must land in the
+        // collector before the result is read. The main queue runs blocks in order.
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+
         // The termination handler can fire before the last bytes are read. Drain the pipes
-        // so the final ERROR line is never missed.
-        if let rest = try? outHandle.readToEnd(), let chunk = String(data: rest, encoding: .utf8), !chunk.isEmpty {
-            Self.handleOutput(chunk, item: item)
+        // so the final ERROR line is never missed, then flush any line with no newline.
+        if let rest = try? outHandle.readToEnd(), !rest.isEmpty {
+            Self.handleOutput(outLines.append(rest), item: item)
         }
-        if let rest = try? errHandle.readToEnd(), let chunk = String(data: rest, encoding: .utf8), !chunk.isEmpty {
-            Self.handleErrorOutput(chunk, item: item, collector: collector)
+        Self.handleOutput(outLines.finish(), item: item)
+        if let rest = try? errHandle.readToEnd(), !rest.isEmpty {
+            Self.handleErrorOutput(errLines.append(rest), item: item, collector: collector)
         }
+        Self.handleErrorOutput(errLines.finish(), item: item, collector: collector)
 
         return RunResult(status: process.terminationStatus, errorLines: collector.lines)
     }
 
-    private static func handleOutput(_ chunk: String, item: DownloadItem?) {
-        for l in chunk.components(separatedBy: "\n") where !l.isEmpty {
+    private static func handleOutput(_ lines: [String], item: DownloadItem?) {
+        for l in lines where !l.isEmpty {
             // A [download] xx% line updates progress/statusText only.
             // Keeping it out of the log is what stops the unbounded
             // array growth and the layout/accessibility storm.
@@ -266,18 +374,18 @@ final class DownloadManager {
         }
     }
 
-    private static func handleErrorOutput(_ chunk: String, item: DownloadItem?, collector: LineCollector) {
-        for l in chunk.components(separatedBy: "\n") where !l.isEmpty {
+    private static func handleErrorOutput(_ lines: [String], item: DownloadItem?, collector: LineCollector) {
+        for l in lines where !l.isEmpty {
             item?.appendLog("[err] \(l)")
             collector.lines.append(l)
         }
     }
 
     /// Counts down the wait before a retry. Returns false if the user cancelled meanwhile.
-    private func waitForRetry(item: DownloadItem, seconds: Int, attempt: Int) async -> Bool {
+    private func waitForRetry(item: DownloadItem, seconds: Int, attempt: Int, of limit: Int) async -> Bool {
         for remaining in stride(from: seconds, to: 0, by: -1) {
             if cancelRequested.contains(item.id) { return false }
-            item.statusText = "Retry \(attempt) of \(Self.retryDelays.count) in \(remaining)s…"
+            item.statusText = "Retry \(attempt) of \(limit) in \(remaining)s…"
             try? await Task.sleep(for: .seconds(1))
         }
         return !cancelRequested.contains(item.id)
@@ -302,6 +410,15 @@ final class DownloadManager {
         }
     }
 
+    /// How many retries these errors get. A 403 can be permanent (geo-blocked or
+    /// members-only video), so it gets one retry, not the full three.
+    nonisolated static func retryLimit(errorLines: [String]) -> Int {
+        suggestsUpdate(errorLines: errorLines) ? 1 : retryDelays.count
+    }
+
+    /// Status text after a 403 that did not clear. A newer yt-dlp may help, but it may not.
+    nonisolated static let forbiddenHint = "Failed: the site refused (403). It may need a newer yt-dlp."
+
     /// A 403 that keeps coming back usually means yt-dlp is out of date.
     nonisolated static func suggestsUpdate(errorLines: [String]) -> Bool {
         errorLines.contains { $0.lowercased().contains("http error 403") }
@@ -324,7 +441,7 @@ final class DownloadManager {
         var args: [String] = []
 
         args += ["-f", settings.resolvedFormat]
-        args += ["-o", outputFolder.appendingPathComponent(settings.outputTemplate).path]
+        args += ["-o", outputFolder.appendingPathComponent(AppSettings.safeOutputTemplate(settings.outputTemplate)).path]
         args += ["--newline"]
 
         if settings.embedMetadata { args += ["--embed-metadata"] }
@@ -347,7 +464,10 @@ final class DownloadManager {
             args += ["--merge-output-format", "mp4"]
         }
 
-        args.append(item.url)
+        if item.noPlaylist { args += ["--no-playlist"] }
+
+        // "--" ends the options, so the URL is never read as one.
+        args += ["--", item.url]
         return args
     }
 
